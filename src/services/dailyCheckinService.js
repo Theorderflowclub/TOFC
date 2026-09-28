@@ -12,6 +12,7 @@ async function postCheckin(client, channelId, content, allowedMentions) {
 
   await message.react('🟢');
   await message.react('🔴');
+  await message.react('🟠');
 }
 
 export async function sendDailyCheckin(client) {
