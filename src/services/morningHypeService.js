@@ -9,10 +9,13 @@ export async function sendMorningHype(client) {
       return;
     }
 
-    await channel.send({
+    const message = await channel.send({
       content: `Match starting soon, who's ready to drop into NY session and secure the loot? @everyone`,
       allowedMentions: { parse: ['everyone'] },
     });
+
+    await message.react('🟢');
+    await message.react('🔴');
 
     logger.info('Morning hype message sent successfully.');
   } catch (error) {
