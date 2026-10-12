@@ -13,6 +13,7 @@ import { checkBirthdays } from './services/birthdayService.js';
 import { checkGiveaways } from './services/giveawayService.js';
 import { sendDailyCheckin } from './services/dailyCheckinService.js';
 import { sendMorningHype } from './services/morningHypeService.js';
+import { registerFlexRoleSync } from './services/flexRoleService.js';
 import { loadCommands, registerCommands as registerSlashCommands } from './handlers/loaders/commandLoader.js';
 import { runSafeTask, handleTaskError, ErrorCodes } from './utils/errorHandler.js';
 import { initializeMusic } from './services/music/riffySetup.js';
@@ -105,6 +106,7 @@ class TitanBot extends Client {
       );
       
       this.setupCronJobs();
+      registerFlexRoleSync(this);
     } catch (error) {
       logger.error('Failed to start bot:', error);
       process.exit(1);
