@@ -3,6 +3,9 @@ import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
 
+const GUILD_ID_OLD = '1126304434901749761';
+const GUILD_CONFIG = {"prefix": "!", "logging": {"ignore": {"users": [], "channels": []}, "enabled": true, "channels": {"audit": "1129400070664634428", "reports": null, "applications": null}, "enabledEvents": {}}, "modRole": null, "autoRole": null, "adminRole": null, "dmOnClose": true, "verification": {"enabled": false, "buttonText": "Verify"}, "premiumRoleId": null, "welcomeChannel": null, "welcomeMessage": "Welcome {user} to {server}! We now have {memberCount} members!", "enabledCommands": {}, "disabledCommands": {}, "birthdayChannelId": null, "disabledCategories": {"economy": true, "birthday": true, "serverstats": true}, "setupWizardCompleted": true};
+
 const ROWS = [
  {
   "id": 2,
@@ -530,8 +533,16 @@ export default {
       }
       await pool.query("SELECT setval(pg_get_serial_sequence('qa_pairs', 'id'), (SELECT COALESCE(MAX(id), 1) FROM qa_pairs))");
 
+      // Restore the old server settings (logging channel, disabled categories, etc.)
+      const guildId = interaction.guildId || GUILD_ID_OLD;
+      await pool.query(
+        `INSERT INTO guilds (id, config) VALUES ($1, $2::jsonb)
+         ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config, updated_at = CURRENT_TIMESTAMP`,
+        [guildId, JSON.stringify(GUILD_CONFIG)]
+      );
+
       const total = await pool.query('SELECT COUNT(*) FROM qa_pairs');
-      await interaction.editReply(`Done. Added ${added} questions. Total in database: ${total.rows[0].count}.`);
+      await interaction.editReply(`Done. Added ${added} questions and restored server settings. Total in database: ${total.rows[0].count}.`);
     } catch (err) {
       console.error('importqa failed:', err);
       await interaction.editReply(`Import failed: ${err.message}`);
