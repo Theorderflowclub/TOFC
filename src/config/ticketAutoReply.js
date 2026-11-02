@@ -2,7 +2,7 @@ import { logger } from '../utils/logger.js';
 
 export const DEFAULT_TICKET_NAME_PATTERN = '^ticket-\\d+';
 export const DEFAULT_TICKET_CATEGORY_NAME = 'START HERE';
-export const DEFAULT_AUTO_REPLY_MAX = 6;
+export const DEFAULT_AUTO_REPLY_MAX = 50;
 
 function boolEnv(name, defaultValue) {
   const raw = process.env[name];
@@ -45,7 +45,7 @@ function maxReplies() {
   const raw = (process.env.TICKET_AUTO_REPLY_MAX || '').trim();
   if (!raw) return DEFAULT_AUTO_REPLY_MAX;
   const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 20) {
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200) {
     logger.warn(`TOFC ticket auto-reply: invalid TICKET_AUTO_REPLY_MAX="${raw}". Using ${DEFAULT_AUTO_REPLY_MAX}.`);
     return DEFAULT_AUTO_REPLY_MAX;
   }

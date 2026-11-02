@@ -28,14 +28,55 @@ export function includesPhrase(normalizedText, phraseText) {
   return haystack.includes(phrase);
 }
 
+function levenshtein(left, right) {
+  const rows = Array.from({ length: left.length + 1 }, (_, index) => [index]);
+  for (let column = 0; column <= right.length; column += 1) rows[0][column] = column;
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+    }
+  }
+  return rows[left.length][right.length];
+}
+
+function fuzzyEqual(token, part) {
+  if (token === part) return true;
+  const longer = Math.max(token.length, part.length);
+  if (longer < 4) return false;
+  if (!token || !part || token[0] !== part[0]) return false;
+  const limit = longer >= 6 ? 2 : 1;
+  if (Math.abs(token.length - part.length) > limit) return false;
+  return levenshtein(token, part) <= limit;
+}
+
+function phraseHit(normalizedText, phraseText) {
+  if (includesPhrase(normalizedText, phraseText)) return 'exact';
+  const phrase = normalize(phraseText);
+  if (!phrase) return null;
+  if (phrase === 'price' && normalizedText.includes('price action')) {
+    return phraseHit(normalizedText.replaceAll('price action', ' '), phraseText);
+  }
+  const tokens = normalizedText.split(' ').filter(Boolean);
+  const parts = phrase.split(' ');
+  if (parts.length === 1) {
+    return tokens.some((token) => fuzzyEqual(token, parts[0])) ? 'fuzzy' : null;
+  }
+  for (let index = 0; index <= tokens.length - parts.length; index += 1) {
+    const window = tokens.slice(index, index + parts.length);
+    if (window.every((token, partIndex) => fuzzyEqual(token, parts[partIndex]))) return 'fuzzy';
+  }
+  return null;
+}
+
 export function scorePhrases(normalizedText, phrases) {
   let score = 0;
   const matched = [];
   for (const phrase of phrases || []) {
-    if (includesPhrase(normalizedText, phrase.text)) {
-      score += Number(phrase.weight) || 0;
-      matched.push(normalize(phrase.text));
-    }
+    const hit = phraseHit(normalizedText, phrase.text);
+    if (!hit) continue;
+    score += Number(phrase.weight) || 0;
+    matched.push(normalize(phrase.text));
   }
   return { score, matched };
 }
@@ -45,6 +86,11 @@ export function matchQuestion(text, faq) {
   const ranked = faq.entries
     .map((entry) => ({ entry, ...scorePhrases(normalized, entry.phrases) }))
     .sort((a, b) => b.score - a.score);
+  if (/\$/.test(String(text || ''))) {
+    const prices = ranked.find((item) => item.entry.id === 'whop-prices');
+    if (prices) prices.score += 4;
+    ranked.sort((a, b) => b.score - a.score);
+  }
   const best = ranked[0];
   const secondScore = ranked[1]?.score || 0;
   const bestScore = best?.score || 0;
@@ -59,6 +105,12 @@ export function matchQuestion(text, faq) {
   if (confident) {
     const blocked = handoffRanked.find((item) => !best.entry.coversHandoff?.includes(item.topic.id));
     if (!blocked) return { type: 'answer', entry: best.entry, score: bestScore };
+    if (blocked.topic.id === 'pricing') {
+      const prices = ranked.find((item) =>
+        item.entry.coversHandoff?.includes('pricing') && item.score >= faq.minScore
+      );
+      if (prices) return { type: 'answer', entry: prices.entry, score: prices.score };
+    }
   }
   if (handoffRanked.length) return { type: 'handoff', topicId: handoffRanked[0].topic.id };
   return { type: 'none' };
@@ -116,6 +168,28 @@ export function emptyState() {
   };
 }
 
+export const DEFAULT_FALLBACKS = [
+  'Thanks for your question! A team member will get back to you soon.',
+  'Got it. A team member will reply in this ticket shortly.',
+  'Thanks for the message. The team will get back to you soon.',
+  'Appreciate you writing in. Someone from the team will follow up soon.',
+];
+
+export const MEMBER_DEBOUNCE_MS = 3000;
+
+export function fallbackList(faq) {
+  const configured = Array.isArray(faq?.fallbacks) ? faq.fallbacks.filter(Boolean) : [];
+  const list = configured.length ? configured : DEFAULT_FALLBACKS;
+  if (faq?.handoff && !list.includes(faq.handoff)) return [...list, faq.handoff];
+  return list;
+}
+
+export function pickFallback(faq, index = 0) {
+  const list = fallbackList(faq);
+  const safeIndex = Number.isFinite(index) ? Math.abs(index) : 0;
+  return list[safeIndex % list.length];
+}
+
 export function isOurAutoReply(content, faq) {
   if (!content) return false;
   if (content.includes(AUTO_REPLY_MARKER)) return true;
@@ -123,9 +197,41 @@ export function isOurAutoReply(content, faq) {
     faq.handoff,
     faq.inviteRewardAck,
     faq.greetingPrompt,
+    ...fallbackList(faq),
     ...faq.entries.map((entry) => entry.answer),
   ];
   return probes.some((probe) => probe && content.includes(probe));
+}
+
+export function createDebouncer({ delayMs = MEMBER_DEBOUNCE_MS, schedule, cancel, onFire }) {
+  const buckets = new Map();
+  return {
+    push(key, text) {
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = { texts: [] };
+        buckets.set(key, bucket);
+      }
+      if (text) bucket.texts.push(text);
+      if (bucket.timer != null) cancel(bucket.timer);
+      bucket.timer = schedule(() => {
+        const texts = bucket.texts.slice();
+        buckets.delete(key);
+        onFire(key, texts);
+      }, delayMs);
+    },
+    cancelKey(key) {
+      const bucket = buckets.get(key);
+      if (!bucket) return;
+      if (bucket.timer != null) cancel(bucket.timer);
+      buckets.delete(key);
+    },
+    cancelPrefix(prefix) {
+      for (const key of [...buckets.keys()]) {
+        if (String(key).startsWith(prefix)) this.cancelKey(key);
+      }
+    },
+  };
 }
 
 export function noteAutoReply(state, content, faq) {
@@ -176,52 +282,27 @@ export function decideReply({
   if (authorIsStaff || state.stopped) return { action: 'stop' };
 
   const normalized = normalize(text || '');
+  if (state.replyCount >= maxReplies) return { action: 'ignore', why: 'reply cap' };
   if (!normalized && !hasAttachment) {
-    if (acknowledgeWhenBlank && !state.greeted && state.replyCount < maxReplies) {
-      return { action: 'reply', kind: 'handoff', ping: true, withGreeting: true };
+    if (acknowledgeWhenBlank) {
+      return {
+        action: 'reply',
+        kind: 'handoff',
+        ping: false,
+        withGreeting: !state.greeted,
+        fallbackText: pickFallback(faq, state.replyCount),
+      };
     }
-    return { action: 'ignore' };
-  }
-  if (state.replyCount >= maxReplies) return { action: 'ignore' };
-  if (normalized && state.previousAsks.some((previous) => areSimilar(normalized, previous))) {
-    return { action: 'ignore' };
+    return { action: 'ignore', why: 'blank message' };
   }
 
   const withGreeting = !state.greeted;
   const mode = modeForReason(reason);
-
-  if (mode === 'invite') {
-    if (state.inviteAcked || state.greeted) return { action: 'ignore' };
-    return { action: 'reply', kind: 'invite', ping: false, withGreeting: true };
-  }
-  if (mode === 'handoff') {
-    if (state.handedOff || state.greeted) return { action: 'ignore' };
-    return { action: 'reply', kind: 'handoff', ping: true, withGreeting: true };
-  }
-
   const memberMode = modeFromMemberText(text);
-  if (memberMode === 'invite') {
-    if (state.inviteAcked) return { action: 'ignore' };
-    return { action: 'reply', kind: 'invite', ping: false, withGreeting };
-  }
-  if (memberMode === 'handoff') {
-    if (state.handedOff) return { action: 'ignore' };
-    return { action: 'reply', kind: 'handoff', ping: true, withGreeting };
-  }
+  const claim = mode === 'invite' || memberMode === 'invite';
+  const match = (!normalized && hasAttachment) ? { type: 'none' } : matchQuestion(text, faq);
 
-  if (isGreetingOnly(text) && !hasAttachment) {
-    if (state.greeted) return { action: 'ignore' };
-    return { action: 'reply', kind: 'greeting', ping: false, withGreeting: true };
-  }
-
-  if (!normalized && hasAttachment) {
-    if (state.handedOff) return { action: 'ignore' };
-    return { action: 'reply', kind: 'handoff', ping: true, withGreeting };
-  }
-
-  const match = matchQuestion(text, faq);
-  if (match.type === 'answer') {
-    if (state.answeredIds.includes(match.entry.id)) return { action: 'ignore' };
+  if (match.type === 'answer' && !(claim && match.entry.id === 'invite-rewards')) {
     return {
       action: 'reply',
       kind: 'answer',
@@ -231,8 +312,18 @@ export function decideReply({
     };
   }
 
-  if (state.handedOff) return { action: 'ignore' };
-  return { action: 'reply', kind: 'handoff', ping: true, withGreeting };
+  if (claim) {
+    return { action: 'reply', kind: 'invite', ping: false, withGreeting };
+  }
+
+  const staffTopic = mode === 'handoff' || memberMode === 'handoff';
+  return {
+    action: 'reply',
+    kind: 'handoff',
+    ping: staffTopic,
+    withGreeting,
+    fallbackText: pickFallback(faq, state.replyCount),
+  };
 }
 
 export function renderReply({
@@ -243,6 +334,7 @@ export function renderReply({
   withGreeting,
   staffRoleIds = [],
   staffUserIds = [],
+  fallbackText = '',
 }) {
   const greeting = userId
     ? faq.greeting.replaceAll('{user}', `<@${userId}>`)
@@ -250,7 +342,7 @@ export function renderReply({
   const body = kind === 'invite'
     ? faq.inviteRewardAck
     : kind === 'handoff'
-      ? faq.handoff
+      ? (fallbackText || pickFallback(faq, 0))
       : kind === 'greeting'
         ? faq.greetingPrompt
         : entry.answer;

@@ -14,7 +14,14 @@ import {
   ticketChannelDecision,
   categoryMatches,
 } from './detect.js';
-import { buildStateFromHistory, decideReply, isOurAutoReply, renderReply } from './decide.js';
+import {
+  buildStateFromHistory,
+  createDebouncer,
+  decideReply,
+  isOurAutoReply,
+  MEMBER_DEBOUNCE_MS,
+  renderReply,
+} from './decide.js';
 
 const OPENING_WAIT_MS = [2000, 2000, 2000];
 
@@ -41,7 +48,30 @@ const ACCESS_WARNING = [
 
 const locks = new Map();
 const accessWarned = new Set();
+const latestMemberMessage = new Map();
 let staffUnsetWarned = false;
+
+const memberDebouncer = createDebouncer({
+  delayMs: MEMBER_DEBOUNCE_MS,
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  cancel: (timer) => clearTimeout(timer),
+  onFire(key, texts) {
+    const pending = latestMemberMessage.get(key);
+    latestMemberMessage.delete(key);
+    if (!pending) return;
+    const combined = texts.map((part) => String(part || '').trim()).filter(Boolean).join('\n');
+    if (combined) pending.message.content = combined;
+    ticketLog(
+      `debounce: merged ${texts.length} message(s) from ${pending.message.author?.id} in #${pending.message.channel?.name}`
+    );
+    enqueue(
+      pending.message.channel.id,
+      () => processTicketMessage(pending.message, pending.client, pending.config),
+    ).catch((error) => {
+      ticketLog(`error after debounce: ${error.message}`);
+    });
+  },
+});
 
 function warnStaffUnset() {
   if (staffUnsetWarned) return;
@@ -67,6 +97,10 @@ export function forgetTicketChannel(channelId) {
   if (!channelId) return;
   locks.delete(channelId);
   accessWarned.delete(channelId);
+  memberDebouncer.cancelPrefix(`${channelId}:`);
+  for (const key of [...latestMemberMessage.keys()]) {
+    if (String(key).startsWith(`${channelId}:`)) latestMemberMessage.delete(key);
+  }
 }
 
 export function noteNewTicketChannel(channel) {
@@ -143,6 +177,26 @@ export async function handleTicketMessage(message, client) {
     ticketLog(
       `ticket detected: #${message.channel.name} (${message.channel.id}) category="${categoryLabel}" from ${message.author.tag || message.author.username || message.author.id} bot=${Boolean(message.author.bot)}`
     );
+
+    if (!message.author.bot && isStaffMember(message.member, message.author.id, config)) {
+      memberDebouncer.cancelPrefix(`${message.channel.id}:`);
+      for (const key of [...latestMemberMessage.keys()]) {
+        if (String(key).startsWith(`${message.channel.id}:`)) latestMemberMessage.delete(key);
+      }
+      ticketLog(`staff message in #${message.channel.name} (${message.channel.id}); stopping auto-replies`);
+      await enqueue(message.channel.id, () => processTicketMessage(message, client, config));
+      return;
+    }
+
+    if (!message.author.bot) {
+      const key = `${message.channel.id}:${message.author.id}`;
+      latestMemberMessage.set(key, { message, client, config });
+      memberDebouncer.push(key, message.content || '');
+      ticketLog(
+        `debounce: waiting ${MEMBER_DEBOUNCE_MS}ms for more messages from ${message.author.id} in #${message.channel.name}`
+      );
+      return;
+    }
 
     await enqueue(message.channel.id, () => processTicketMessage(message, client, config));
   } catch (error) {
@@ -298,6 +352,10 @@ async function processTicketMessage(message, client, config) {
     `reason extracted: field="${prompt.fieldName || 'none'}" value="${prompt.question || ''}" opener=${prompt.openerId || 'unknown'} panel=${reason} in #${message.channel.name} (${message.channel.id})`
   );
 
+  ticketLog(
+    `history state: replies=${state.replyCount} greeted=${state.greeted} handedOff=${state.handedOff} stopped=${state.stopped} in #${message.channel.name} (${message.channel.id})`
+  );
+
   const decision = decideReply({
     text: prompt.question,
     hasAttachment: (message.attachments?.size || 0) > 0,
@@ -310,9 +368,10 @@ async function processTicketMessage(message, client, config) {
   });
 
   if (decision.action !== 'reply') {
-    const why = decision.action === 'stop'
-      ? 'staff already replied or the author is staff'
-      : 'already answered, duplicate, blank, or over the reply cap';
+    const why = decision.why
+      || (decision.action === 'stop'
+        ? 'staff already replied or the author is staff'
+        : 'not replying');
     ticketLog(`skipped: ${why} in #${message.channel.name} (${message.channel.id})`);
     return;
   }
@@ -331,6 +390,7 @@ async function processTicketMessage(message, client, config) {
     withGreeting: decision.withGreeting,
     staffRoleIds: decision.ping ? config.staffRoleIds : [],
     staffUserIds: decision.ping ? config.staffUserIds : [],
+    fallbackText: decision.fallbackText,
   });
 
   try {

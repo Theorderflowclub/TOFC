@@ -97,6 +97,9 @@ function normalizeFaq(parsed) {
       parsed.inviteRewardAck
       || "Thanks, we're checking your invites, you'll get your reward here."
     ).trim(),
+    fallbacks: Array.isArray(parsed.fallbacks)
+      ? parsed.fallbacks.map((line) => String(line || '').trim()).filter(Boolean)
+      : [],
     entries,
     handoffTopics,
     minScore: Number(parsed.minScore) > 0 ? Number(parsed.minScore) : 3,
