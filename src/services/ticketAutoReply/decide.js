@@ -171,11 +171,17 @@ export function decideReply({
   state,
   faq,
   maxReplies,
+  acknowledgeWhenBlank = false,
 }) {
   if (authorIsStaff || state.stopped) return { action: 'stop' };
 
   const normalized = normalize(text || '');
-  if (!normalized && !hasAttachment) return { action: 'ignore' };
+  if (!normalized && !hasAttachment) {
+    if (acknowledgeWhenBlank && !state.greeted && state.replyCount < maxReplies) {
+      return { action: 'reply', kind: 'handoff', ping: true, withGreeting: true };
+    }
+    return { action: 'ignore' };
+  }
   if (state.replyCount >= maxReplies) return { action: 'ignore' };
   if (normalized && state.previousAsks.some((previous) => areSimilar(normalized, previous))) {
     return { action: 'ignore' };
@@ -238,7 +244,9 @@ export function renderReply({
   staffRoleIds = [],
   staffUserIds = [],
 }) {
-  const greeting = faq.greeting.replaceAll('{user}', `<@${userId}>`);
+  const greeting = userId
+    ? faq.greeting.replaceAll('{user}', `<@${userId}>`)
+    : faq.greeting.replaceAll('{user}', 'there');
   const body = kind === 'invite'
     ? faq.inviteRewardAck
     : kind === 'handoff'
@@ -261,7 +269,7 @@ export function renderReply({
       users.push(...staffUserIds);
     }
   }
-  if (withGreeting) users.push(String(userId));
+  if (withGreeting && userId) users.push(String(userId));
 
   const markerRoom = AUTO_REPLY_MARKER.length;
   if (visible.length + markerRoom > 2000) {

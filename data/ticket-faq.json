@@ -1,5 +1,5 @@
 {
-  "notes": "Edit this file to change what TOFC Bot says in Ticket Tool tickets. You do not need to change any code. entries[].answer is the exact text the bot may send. phrases are words or phrases that must show up in the member's message; weight is how strongly each one counts (a score of 3 or more, and clearly ahead of every other entry, is a confident match). coversHandoff lets that entry answer even if the question also sounds like a handoff topic. handoffTopics are questions the bot must not guess (prices, links, refunds, who won). The todos list is for Brandon only — the bot never reads it to members. Do not add a price, URL, discount code, or promise until it is confirmed. On Railway this file ships inside the image, so commit the edit and redeploy. Locally it reloads on the next ticket message when the file changes.",
+  "notes": "Edit this file to change what TOFC Bot says in Ticket Tool tickets. You do not need to change any code. entries[].answer is the exact text the bot may send. phrases are words or phrases that must show up in the member's message; weight is how strongly each one counts (a score of 3 or more, and clearly ahead of every other entry, is a confident match). coversHandoff lets that entry answer even if the question also sounds like a handoff topic. Confirmed Whop prices and checkout links live only in the whop-prices entry. handoffTopics still catch refunds, discount codes, and who won. The todos list is for Brandon only — the bot never reads it to members. Do not add a refund policy, affiliate URL, or winner until it is confirmed. On Railway this file ships inside the image, so commit the edit and redeploy. Locally it reloads on the next ticket message when the file changes.",
   "greeting": "Hey {user}, thanks for opening a ticket.",
   "greetingPrompt": "Send your question here whenever you're ready. I'll answer if it's covered in the TOFC FAQ, and otherwise the team will follow up.",
   "handoff": "Thanks for reaching out. A member of the team will get back to you soon.",
@@ -7,12 +7,9 @@
   "minScore": 3,
   "minMargin": 1,
   "todos": [
-    "Premium membership price — not confirmed. Do not guess a number.",
-    "1:1 coaching price — not confirmed. Do not guess a number.",
-    "Whop checkout / sales page URL — not confirmed. The bot may say Premium and 1:1 are sold through Whop, but it must not invent a link.",
-    "Whop affiliate link URL — not confirmed. The bot may explain the affiliate reward, but it must not invent a link.",
-    "Current Trader of the Month winner — announced in Discord, not stored here. Do not name a winner.",
-    "Refunds, cancellations, and billing problems — no confirmed policy. These always go to the team.",
+    "Whop affiliate link URL — not set on Whop. Do not invent a link.",
+    "Current Trader of the Month winner — not stored here. Do not name a winner.",
+    "Refunds and cancellations — no policy is set on Whop. These always go to the team.",
     "Server invite link — not confirmed. Do not invent one."
   ],
   "handoffTopics": [
@@ -91,6 +88,28 @@
       ]
     },
     {
+      "id": "whop-prices",
+      "question": "What are the Whop prices?",
+      "answer": "TOFC prices are in USD and there are no free trials. The store is https://prestige-1.whop.site\n\nFree Discord Access — free. https://whop.com/checkout/plan_QMJla0RcCdDYI\nPremium (Prestige 1) — $125/month. Includes the TOFC Models, structured education (the Master TOFC Models course), daily GEX levels, weekly group lessons, and the TOFC Journal and docs. The 2nd month unlocks the full Optionsflow course. No signals or callouts. https://whop.com/checkout/plan_048dLgwCwNmMZ\nPremium Lifetime — $799 one-time. https://whop.com/checkout/plan_uYRhdFiA0iYky\nMentorship 1 Month — $399/month. Weekly 1-hour 1:1 call, daily personal trading plan, trade and journal reviews, orderflow and psychology coaching, plus everything in Premium, the Optionsflow course and daily live sessions. https://whop.com/checkout/plan_uMBPr7A1Kxguo\nMentorship 2 Months — $699 per 2 months (8 sessions). https://whop.com/checkout/plan_7VkqFgXS3uEkf\nMentorship 3 Months + FREE DeepCharts — $999 per 3 months (12 sessions, plus 3 months of DeepCharts free). https://whop.com/checkout/plan_c45K1tKpgeBdY",
+      "coversHandoff": ["pricing", "checkout-link"],
+      "phrases": [
+        { "text": "whop price", "weight": 6 },
+        { "text": "whats the price", "weight": 5 },
+        { "text": "what is the price", "weight": 5 },
+        { "text": "what does it cost", "weight": 5 },
+        { "text": "how much", "weight": 4 },
+        { "text": "pricing", "weight": 5 },
+        { "text": "price", "weight": 4 },
+        { "text": "cost", "weight": 4 },
+        { "text": "lifetime", "weight": 5 },
+        { "text": "mentorship", "weight": 5 },
+        { "text": "coaching", "weight": 4 },
+        { "text": "premium", "weight": 2 },
+        { "text": "whop link", "weight": 5 },
+        { "text": "free discord", "weight": 4 }
+      ]
+    },
+    {
       "id": "premium-includes",
       "question": "What do Premium members get?",
       "answer": "Premium members get the daily NQ GEX levels posted every trading day before the New York open (15:30 Amsterdam time), plus the education course.",
@@ -113,9 +132,11 @@
     {
       "id": "education-course",
       "question": "What is the education course?",
-      "answer": "The education course on Whop is \"Master TOFC Models\": about 6 hours of video in 14 chapters — Introduction, DeepCharts Setup, Checklist & No trade days, Price Action (Context), AMT (Location), Orderflow (Confirmation), TOFC Models 1–6, Domino effect models, END. Each model has a visual, an explanation video, a case study and a quiz. TOFC charts on DeepCharts.",
+      "answer": "The education course on Whop is \"Master TOFC Models\": about 6 hours of video in 14 chapters — Introduction, DeepCharts Setup, Checklist & No trade days, Price Action (Context), AMT (Location), Orderflow (Confirmation), TOFC Model 1 to 6, Domino effect models, END. Each model has a visual, an explanation video, a case study and a quiz. TOFC charts on DeepCharts.",
       "coversHandoff": [],
       "phrases": [
+        { "text": "whats in the education course", "weight": 6 },
+        { "text": "whats in the course", "weight": 5 },
         { "text": "master tofc models", "weight": 5 },
         { "text": "education course", "weight": 4 },
         { "text": "education program", "weight": 4 },
@@ -123,6 +144,7 @@
         { "text": "deepcharts", "weight": 4 },
         { "text": "chapters", "weight": 3 },
         { "text": "case study", "weight": 3 },
+        { "text": "tofc model", "weight": 4 },
         { "text": "tofc models", "weight": 4 },
         { "text": "price action", "weight": 3 },
         { "text": "domino", "weight": 3 },
