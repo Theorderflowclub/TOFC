@@ -6,6 +6,7 @@ import { reconcileTicketPanels, reconcileVerificationPanels, reconcileReactionRo
 import { reconcileLevelRoles } from "../services/leveling/levelRoleSyncService.js";
 import { initRiffyAfterReady } from "../services/music/riffySetup.js";
 import { auditTicketAccess } from "../services/ticketAutoReply/service.js";
+import { rebuildQaBuffer } from "../services/qaExport/weekly.js";
 
 export default {
   name: Events.ClientReady,
@@ -49,6 +50,7 @@ export default {
       );
 
       await auditTicketAccess(client);
+      rebuildQaBuffer(client).catch((error) => logger.error("Q&A buffer rebuild failed:", error));
     } catch (error) {
       logger.error("Error in ready event:", error);
     }

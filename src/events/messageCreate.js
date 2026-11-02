@@ -19,6 +19,7 @@ import {
   recordCorrectCount,
 } from '../services/countingGameService.js';
 import { handleTicketMessage } from '../services/ticketAutoReply/service.js';
+import { noteLiveQaMessage } from '../services/qaExport/buffer.js';
 
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
@@ -32,6 +33,8 @@ export default {
       await handleTicketMessage(message, client);
 
       if (message.author.bot) return;
+
+      noteLiveQaMessage(message);
 
       logger.debug(`Message received from ${message.author.tag}: ${message.content}`);
 
