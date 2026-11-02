@@ -13,6 +13,7 @@ import { checkBirthdays } from './services/birthdayService.js';
 import { checkGiveaways } from './services/giveawayService.js';
 import { sendDailyCheckin } from './services/dailyCheckinService.js';
 import { sendMorningHype } from './services/morningHypeService.js';
+import { postWeeklyQa } from './services/qaExport/weekly.js';
 import { registerFlexRoleSync } from './services/flexRoleService.js';
 import { loadCommands, registerCommands as registerSlashCommands } from './handlers/loaders/commandLoader.js';
 import { runSafeTask, handleTaskError, ErrorCodes } from './utils/errorHandler.js';
@@ -257,6 +258,7 @@ class TitanBot extends Client {
     cron.schedule('*/15 * * * *', runSafeTask('counter_update', () => this.updateAllCounters()));
     cron.schedule('0 11 * * 1-5', runSafeTask('daily_checkin', () => sendDailyCheckin(this)), { timezone: 'America/New_York' });
     cron.schedule('0 9 * * 1-5', runSafeTask('morning_hype', () => sendMorningHype(this)), { timezone: 'America/New_York' });
+    cron.schedule('0 20 * * 0', runSafeTask('qa_weekly_export', () => postWeeklyQa(this)), { timezone: 'Europe/Amsterdam' });
   }
 
   async updateAllCounters() {

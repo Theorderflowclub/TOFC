@@ -246,6 +246,19 @@ Notes:
 > migration step — just deploy/restart. To disable auto-migration set
 > `AUTO_MIGRATE=false`. You can still run a manual key migration locally with
 > `node scripts/migrate-keys.js --dry-run` (preview) or `node scripts/migrate-keys.js`.
+## Export Q&A history
+
+Administrators and members with the **FOUNDERS TOFC** role can run `/export-qa` in the server.
+
+- `days` is how far back to look. It defaults to 90 and cannot be more than 730.
+- `channels` is optional. Leave it empty to use every text channel or forum whose name contains `tofc-trading-chat`, `questions`, `questions-access`, or `faq`. Emoji and bracket prefixes such as `〔🗽〕` are ignored. Forum posts and threads under those channels are included, including archived ones.
+- The command reads history in pages of 100. It can take several minutes. The result is posted in `#ticket-transcripts` when that channel exists, otherwise in the channel where you ran the command.
+- You get two gzipped JSON files: Q&A pairs, and a raw file of member and owner messages so the pairs can be rebuilt later. Files larger than 8MB are split.
+
+The bot also saves new pairs from those channels and from ticket channels as messages arrive. Every Sunday at 20:00 Europe/Amsterdam it posts that week's pairs in `#ticket-transcripts`. Nothing is sent to members, and ticket replies are unchanged.
+
+Slash commands, including `/export-qa`, are registered when the bot starts. After this is deployed, restart the bot (Railway does that on deploy). If `GUILD_ID` is set, the command shows up in that server right away. Without a guild id, Discord can take up to an hour to show a new global command.
+
 <a name="bot-intents"></a>
 
 ## Required Bot Intents
