@@ -3,6 +3,12 @@
   "greeting": "Hey {user}, thanks for opening a ticket.",
   "greetingPrompt": "Send your question here whenever you're ready. I'll answer if it's covered in the TOFC FAQ, and otherwise the team will follow up.",
   "handoff": "Thanks for reaching out. A member of the team will get back to you soon.",
+  "fallbacks": [
+    "Thanks for your question! A team member will get back to you soon.",
+    "Got it. A team member will reply in this ticket shortly.",
+    "Thanks for the message. The team will get back to you soon.",
+    "Appreciate you writing in. Someone from the team will follow up soon."
+  ],
   "inviteRewardAck": "Thanks, we're checking your invites, you'll get your reward here.",
   "minScore": 3,
   "minMargin": 1,
@@ -138,6 +144,7 @@
         { "text": "whats in the education course", "weight": 6 },
         { "text": "whats in the course", "weight": 5 },
         { "text": "master tofc models", "weight": 5 },
+        { "text": "education", "weight": 3 },
         { "text": "education course", "weight": 4 },
         { "text": "education program", "weight": 4 },
         { "text": "the course", "weight": 3 },

@@ -14,9 +14,11 @@ import {
 import {
   AUTO_REPLY_MARKER,
   buildStateFromHistory,
+  createDebouncer,
   decideReply,
   emptyState,
   matchQuestion,
+  MEMBER_DEBOUNCE_MS,
   renderReply,
 } from '../src/services/ticketAutoReply/decide.js';
 
@@ -48,6 +50,7 @@ function replyTo(text, extras = {}) {
     withGreeting: decision.withGreeting,
     staffRoleIds: decision.ping ? (extras.staffRoleIds || []) : [],
     staffUserIds: decision.ping ? (extras.staffUserIds || []) : [],
+    fallbackText: decision.fallbackText,
   });
   return { ...decision, ...rendered };
 }
@@ -200,9 +203,10 @@ test('first member message gets one greeting plus the answer, then only new ques
     authorIsStaff: false,
     state,
     faq,
-    maxReplies: 6,
+    maxReplies: 50,
   });
-  assert.equal(repeat.action, 'ignore');
+  assert.equal(repeat.action, 'reply');
+  assert.equal(repeat.entry.id, 'what-tofc-sells');
 
   const next = decideReply({
     text: 'When are weekly best traders posted?',
@@ -217,15 +221,16 @@ test('first member message gets one greeting plus the answer, then only new ques
   assert.equal(next.withGreeting, false);
 });
 
-test('a greeting alone does not hand off, and a later real question still can', () => {
+test('a greeting and an unknown question both get a reply', () => {
   const hello = replyTo('Hey there');
-  assert.equal(hello.kind, 'greeting');
+  assert.equal(hello.action, 'reply');
   assert.equal(hello.ping, false);
-  assert.equal(hello.content.includes(faq.handoff), false);
+  assert.match(hello.content, /get back to you soon|reply in this ticket|follow up soon/i);
 
   const unknown = replyTo('blorp zing quota');
   assert.equal(unknown.kind, 'handoff');
-  assert.equal(unknown.ping, true);
+  assert.equal(unknown.ping, false);
+  assert.match(unknown.content, /get back to you soon|reply in this ticket|follow up soon/i);
 });
 
 test('staff replies stop auto-answers, including ones already in the channel', () => {
@@ -417,7 +422,7 @@ test('a Ticket Tool ticket with no FAQ match still gets an acknowledgement', () 
     userId: '111111111111111111',
     withGreeting: true,
   });
-  assert.match(rendered.content, /team will get back to you soon/);
+  assert.match(rendered.content, /get back to you soon|reply in this ticket|follow up soon/);
 
   const welcomeOnly = extractTicketToolPrompt({
     content: '<@111111111111111111> Welcome',
@@ -512,7 +517,7 @@ test('new env vars are optional and fall back safely', () => {
   assert.equal(defaults.enabled, true);
   assert.equal(defaults.categoryName, 'START HERE');
   assert.equal(defaults.namePattern.test('ticket-0002'), true);
-  assert.equal(defaults.maxReplies, 6);
+  assert.equal(defaults.maxReplies, 50);
   assert.deepEqual(defaults.staffRoleIds, []);
   assert.deepEqual(defaults.staffUserIds, []);
 
@@ -528,6 +533,158 @@ test('new env vars are optional and fall back safely', () => {
     if (value == null) delete process.env[key];
     else process.env[key] = value;
   }
+});
+
+test('later member messages still get a reply, including the 7th', () => {
+  const state = emptyState();
+  state.greeted = true;
+  state.handedOff = true;
+  state.replyCount = 6;
+  state.answeredIds = ['whop-prices', 'education-course'];
+  state.previousAsks = ['whats the whop price', 'hello', 'we want a partnership with you guys'];
+
+  const repeated = decideReply({
+    text: 'whats the whop price',
+    reason: 'education',
+    authorIsStaff: false,
+    state,
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(repeated.action, 'reply');
+  assert.equal(repeated.entry.id, 'whop-prices');
+
+  const seventh = decideReply({
+    text: 'hello',
+    reason: 'education',
+    authorIsStaff: false,
+    state,
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(seventh.action, 'reply');
+  assert.equal(seventh.kind, 'handoff');
+
+  const capped = decideReply({
+    text: 'hello again',
+    reason: 'education',
+    authorIsStaff: false,
+    state: { ...state, replyCount: 50 },
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(capped.action, 'ignore');
+  assert.equal(capped.why, 'reply cap');
+});
+
+test('partnership handoff does not silence the next member message', () => {
+  const first = replyTo('we want a partnership with you guys');
+  assert.equal(first.kind, 'handoff');
+  assert.equal(first.ping, true);
+
+  const state = emptyState();
+  state.greeted = true;
+  state.handedOff = true;
+  state.replyCount = 3;
+  const hello = decideReply({
+    text: 'hello',
+    reason: 'education',
+    authorIsStaff: false,
+    state,
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(hello.action, 'reply');
+  assert.equal(hello.kind, 'handoff');
+});
+
+test('an existing ticket still gets replies after a restart', () => {
+  const startHere = 'ᯓ➤ START HERE 🔒';
+  assert.equal(isTicketChannel(channel({ name: 'ticket-0003', parentName: startHere }), ticketConfig), true);
+
+  const course = faq.entries.find((entry) => entry.id === 'education-course');
+  const prices = faq.entries.find((entry) => entry.id === 'whop-prices');
+  const history = [
+    { id: 'tool', content: '<@111> Welcome', createdTimestamp: 1, author: { id: 'tool', bot: true } },
+    { id: 'a1', content: `Hey <@111>, thanks for opening a ticket.\n\n${course.answer}${AUTO_REPLY_MARKER}`, createdTimestamp: 2, author: { id: 'bot', bot: true } },
+    { id: 'q2', content: 'something else', createdTimestamp: 3, author: { id: 'brndnn', bot: false } },
+    { id: 'a2', content: `Thanks for reaching out. A member of the team will get back to you soon.${AUTO_REPLY_MARKER}`, createdTimestamp: 4, author: { id: 'bot', bot: true } },
+    { id: 'q3', content: 'how much is premium', createdTimestamp: 5, author: { id: 'brndnn', bot: false } },
+    { id: 'a3', content: `${prices.answer}${AUTO_REPLY_MARKER}`, createdTimestamp: 6, author: { id: 'bot', bot: true } },
+    { id: 'q4', content: 'we want a partnership with you guys', createdTimestamp: 7, author: { id: 'brndnn', bot: false } },
+  ];
+  const state = buildStateFromHistory(history, {
+    botUserId: 'bot',
+    faq,
+    currentMessageId: 'q4',
+    isStaffUser: () => false,
+  });
+  assert.equal(state.stopped, false);
+  assert.equal(state.greeted, true);
+  assert.equal(state.handedOff, true);
+  assert.equal(state.replyCount, 3);
+
+  const partnership = decideReply({
+    text: 'we want a partnership with you guys',
+    reason: 'education',
+    authorIsStaff: false,
+    state,
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(partnership.action, 'reply');
+
+  const helloState = buildStateFromHistory(
+    [...history, { id: 'a4', content: `Thanks for your question! A team member will get back to you soon.${AUTO_REPLY_MARKER}`, createdTimestamp: 8, author: { id: 'bot', bot: true } }, { id: 'q5', content: 'hello', createdTimestamp: 9, author: { id: 'brndnn', bot: false } }],
+    { botUserId: 'bot', faq, currentMessageId: 'q5', isStaffUser: () => false },
+  );
+  const hello = decideReply({
+    text: 'hello',
+    reason: 'education',
+    authorIsStaff: false,
+    state: helloState,
+    faq,
+    maxReplies: 50,
+  });
+  assert.equal(hello.action, 'reply');
+  assert.equal(hello.kind, 'handoff');
+});
+
+test('typos and loose price wording match the Whop prices', () => {
+  assert.equal(matchQuestion('how much got cost premium', faq).entry.id, 'whop-prices');
+  assert.equal(matchQuestion('how mch premuim prise', faq).entry.id, 'whop-prices');
+  assert.equal(matchQuestion('lifetime mentorship', faq).entry.id, 'whop-prices');
+  assert.equal(matchQuestion('whats in the educaton corse', faq).entry.id, 'education-course');
+  assert.equal(matchQuestion('premium is $125?', faq).entry.id, 'whop-prices');
+});
+
+test('rapid member messages debounce into one combined reply', () => {
+  const timers = [];
+  let fired = null;
+  const debouncer = createDebouncer({
+    delayMs: MEMBER_DEBOUNCE_MS,
+    schedule(fn, ms) {
+      const timer = { fn, ms, cancelled: false };
+      timers.push(timer);
+      return timer;
+    },
+    cancel(timer) {
+      timer.cancelled = true;
+    },
+    onFire(key, texts) {
+      fired = { key, texts };
+    },
+  });
+
+  debouncer.push('1566877490943885342:brndnn', 'we want a partnership with you guys');
+  debouncer.push('1566877490943885342:brndnn', 'hello');
+  assert.equal(timers[0].cancelled, true);
+  assert.equal(timers[1].ms, 3000);
+  timers[1].fn();
+  assert.deepEqual(fired, {
+    key: '1566877490943885342:brndnn',
+    texts: ['we want a partnership with you guys', 'hello'],
+  });
 });
 
 test('existing scheduled chat messages and their cron entries are unchanged', () => {
