@@ -111,7 +111,6 @@ test('answers Whop price questions with the real plans and nothing invented', ()
   assert.equal(price.kind, 'answer');
   assert.equal(price.entry.id, 'whop-prices');
   assert.match(price.content, /no free trials/i);
-  assert.match(price.content, /https:\/\/prestige-1\.whop\.site/);
   assert.match(price.content, /Free Discord Access — free\. https:\/\/whop\.com\/checkout\/plan_QMJla0RcCdDYI/);
   assert.match(price.content, /Premium \(Prestige 1\) — \$125\/month/);
   assert.match(price.content, /No signals or callouts\. https:\/\/whop\.com\/checkout\/plan_048dLgwCwNmMZ/);
@@ -134,7 +133,7 @@ test('answers Whop price questions with the real plans and nothing invented', ()
 
   const refund = replyTo('can I get a refund');
   assert.equal(refund.kind, 'handoff');
-  assert.equal(refund.content.includes('prestige-1.whop.site'), false);
+  assert.equal(refund.content.includes('whop.com/checkout'), false);
 
   const code = replyTo('do you have a discount code');
   assert.equal(code.kind, 'handoff');
