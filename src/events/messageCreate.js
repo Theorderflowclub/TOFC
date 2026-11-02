@@ -27,11 +27,13 @@ export default {
   name: Events.MessageCreate,
   async execute(message, client) {
     try {
-      if (message.author.bot || !message.guild) return;
-
-      logger.debug(`Message received from ${message.author.tag}: ${message.content}`);
+      if (!message.guild) return;
 
       await handleTicketMessage(message, client);
+
+      if (message.author.bot) return;
+
+      logger.debug(`Message received from ${message.author.tag}: ${message.content}`);
 
       const countingProcessed = await handleCountingGame(message, client);
       if (countingProcessed) {

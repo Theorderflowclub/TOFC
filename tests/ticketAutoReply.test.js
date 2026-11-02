@@ -6,8 +6,10 @@ import { getTicketAutoReplyConfig } from '../src/config/ticketAutoReply.js';
 import { loadTicketFaq } from '../src/services/ticketAutoReply/faqStore.js';
 import {
   detectTicketReason,
+  extractTicketToolPrompt,
   isStaffMember,
   isTicketChannel,
+  messageToText,
 } from '../src/services/ticketAutoReply/detect.js';
 import {
   AUTO_REPLY_MARKER,
@@ -70,23 +72,26 @@ function channel({ name, parentName, type = ChannelType.GuildText }) {
 test('FAQ file loads the confirmed facts and keeps unconfirmed facts out of replies', () => {
   assert.ok(faq);
   assert.equal(faq.inviteRewardAck, "Thanks, we're checking your invites, you'll get your reward here.");
-  const spoken = [
+  const priceEntry = faq.entries.find((entry) => entry.id === 'whop-prices');
+  const spokenWithoutPrices = [
     faq.greeting,
     faq.greetingPrompt,
     faq.handoff,
     faq.inviteRewardAck,
-    ...faq.entries.map((entry) => entry.answer),
+    ...faq.entries.filter((entry) => entry.id !== 'whop-prices').map((entry) => entry.answer),
   ].join('\n');
-  assert.equal(/https?:\/\/|www\.|TODO|\$|€|£/i.test(spoken), false);
-  assert.match(spoken, /Premium membership and 1:1 coaching through Whop/);
-  assert.match(spoken, /15:30 Amsterdam time/);
-  assert.match(spoken, /Master TOFC Models/);
-  assert.match(spoken, /50% off your first month of Premium/);
-  assert.match(spoken, /payout is 4/);
-  assert.match(spoken, /every Friday/);
-  assert.ok(faq.todos.some((item) => /price/i.test(item)));
-  assert.ok(faq.todos.some((item) => /URL/i.test(item)));
-  assert.equal(spoken.includes(faq.todos[0]), false);
+  assert.equal(/https?:\/\/|www\.|TODO|\$|€|£/i.test(spokenWithoutPrices), false);
+  assert.match(spokenWithoutPrices, /Premium membership and 1:1 coaching through Whop/);
+  assert.match(spokenWithoutPrices, /15:30 Amsterdam time/);
+  assert.match(spokenWithoutPrices, /Master TOFC Models/);
+  assert.match(spokenWithoutPrices, /50% off your first month of Premium/);
+  assert.match(spokenWithoutPrices, /payout is 4/);
+  assert.match(spokenWithoutPrices, /every Friday/);
+  assert.ok(faq.todos.some((item) => /affiliate link URL/i.test(item)));
+  assert.ok(faq.todos.some((item) => /Trader of the Month/i.test(item)));
+  assert.ok(faq.todos.some((item) => /Refunds/i.test(item)));
+  assert.equal(priceEntry.answer.includes(faq.todos[0]), false);
+  assert.equal(/refund policy|affiliate link URL|winner is/i.test(priceEntry.answer), false);
 });
 
 test('matches membership, GEX, the course, invites, and leaderboards', () => {
@@ -101,22 +106,39 @@ test('matches membership, GEX, the course, invites, and leaderboards', () => {
   assert.equal(matchQuestion('When are the weekly best traders highlighted?', faq).entry.id, 'weekly-best');
 });
 
-test('does not invent a price, link, code, or winner', () => {
-  const price = replyTo('How much is premium membership?');
-  assert.equal(price.kind, 'handoff');
-  assert.equal(/\$|https?:\/\/|\bcode\b/i.test(price.content), false);
-  assert.match(price.content, /team will get back to you soon/);
+test('answers Whop price questions with the real plans and nothing invented', () => {
+  const price = replyTo('whats the whop price');
+  assert.equal(price.kind, 'answer');
+  assert.equal(price.entry.id, 'whop-prices');
+  assert.match(price.content, /no free trials/i);
+  assert.match(price.content, /https:\/\/prestige-1\.whop\.site/);
+  assert.match(price.content, /Free Discord Access — free\. https:\/\/whop\.com\/checkout\/plan_QMJla0RcCdDYI/);
+  assert.match(price.content, /Premium \(Prestige 1\) — \$125\/month/);
+  assert.match(price.content, /No signals or callouts\. https:\/\/whop\.com\/checkout\/plan_048dLgwCwNmMZ/);
+  assert.match(price.content, /Premium Lifetime — \$799 one-time\. https:\/\/whop\.com\/checkout\/plan_uYRhdFiA0iYky/);
+  assert.match(price.content, /Mentorship 1 Month — \$399\/month/);
+  assert.match(price.content, /https:\/\/whop\.com\/checkout\/plan_uMBPr7A1Kxguo/);
+  assert.match(price.content, /Mentorship 2 Months — \$699 per 2 months \(8 sessions\)\. https:\/\/whop\.com\/checkout\/plan_7VkqFgXS3uEkf/);
+  assert.match(price.content, /Mentorship 3 Months \+ FREE DeepCharts — \$999 per 3 months \(12 sessions, plus 3 months of DeepCharts free\)\. https:\/\/whop\.com\/checkout\/plan_c45K1tKpgeBdY/);
+  assert.ok(price.content.length <= 2000);
 
-  const link = replyTo('Can you send me the Whop link?');
-  assert.equal(link.kind, 'handoff');
-  assert.equal(/https?:\/\//.test(link.content), false);
+  assert.equal(replyTo('How much is premium membership?').entry.id, 'whop-prices');
+  assert.equal(replyTo('How much is the course?').entry.id, 'whop-prices');
+  assert.equal(replyTo('how much is the mentorship').entry.id, 'whop-prices');
+  assert.equal(replyTo('premium lifetime cost').entry.id, 'whop-prices');
+  assert.equal(replyTo('Can you send me the Whop link?').entry.id, 'whop-prices');
 
   const winner = replyTo('Who won trader of the month?');
   assert.equal(winner.kind, 'handoff');
-  assert.equal(winner.content.includes('free month'), false);
+  assert.equal(winner.content.includes('$125'), false);
 
-  const coursePrice = replyTo('How much is the course?');
-  assert.equal(coursePrice.kind, 'handoff');
+  const refund = replyTo('can I get a refund');
+  assert.equal(refund.kind, 'handoff');
+  assert.equal(refund.content.includes('prestige-1.whop.site'), false);
+
+  const code = replyTo('do you have a discount code');
+  assert.equal(code.kind, 'handoff');
+  assert.equal(code.content.includes('$399'), false);
 });
 
 test('price action is the course, not a price question', () => {
@@ -293,6 +315,136 @@ test('ticket channel detection uses the name and the START HERE category', () =>
   assert.equal(isTicketChannel(channel({ name: 'ticket-12', parentName: 'Tickets' }), ticketConfig), false);
   assert.equal(isTicketChannel(channel({ name: 'questions-access', parentName: startHere }), ticketConfig), false);
   assert.equal(isTicketChannel(channel({ name: 'ticket-0002', parentName: startHere, type: ChannelType.GuildCategory }), ticketConfig), false);
+  assert.equal(isTicketChannel(channel({ name: 'ticket-0003', parentName: startHere }), ticketConfig), true);
+  assert.equal(
+    isTicketChannel(channel({ name: 'ticket-0003', parentName: 'ᯓ➤  START\u00A0HERE\u200b  🔒' }), ticketConfig),
+    true
+  );
+});
+
+test('Ticket Tool welcome embed is the question when the member never types', () => {
+  const openerId = '111111111111111111';
+  const toolMessage = {
+    id: 'tool-1',
+    content: `<@${openerId}> Welcome`,
+    author: { id: '222222222222222222', bot: true, username: 'Ticket Tool' },
+    embeds: [
+      {
+        description: 'Thank you for reaching out to us. A member of staff will be with you shortly.',
+        fields: [
+          { name: 'Why are you opening this ticket?', value: 'whats in the education course' },
+        ],
+      },
+    ],
+    mentions: {
+      users: new Map([[openerId, { id: openerId, bot: false, username: 'brndnn' }]]),
+    },
+  };
+
+  const prompt = extractTicketToolPrompt(toolMessage);
+  assert.equal(prompt.question, 'whats in the education course');
+  assert.equal(prompt.fieldName, 'Why are you opening this ticket?');
+  assert.equal(prompt.openerId, openerId);
+  assert.equal(prompt.question.includes('Thank you for reaching out'), false);
+  assert.equal(prompt.question.toLowerCase().includes('welcome'), false);
+
+  const plainMember = {
+    roles: { cache: { has: () => false } },
+    permissions: { has: () => false },
+  };
+  assert.equal(isStaffMember(plainMember, openerId, { staffRoleIds: [], staffUserIds: [] }), false);
+
+  assert.equal(detectTicketReason([messageToText(toolMessage)]), 'unknown');
+
+  const decision = decideReply({
+    text: prompt.question,
+    reason: 'unknown',
+    authorIsStaff: false,
+    state: emptyState(),
+    faq,
+    maxReplies: 6,
+    acknowledgeWhenBlank: true,
+  });
+  assert.equal(decision.action, 'reply');
+  assert.equal(decision.kind, 'answer');
+  assert.equal(decision.entry.id, 'education-course');
+
+  const rendered = renderReply({
+    kind: decision.kind,
+    entry: decision.entry,
+    faq,
+    userId: prompt.openerId,
+    withGreeting: true,
+  });
+  assert.match(rendered.content, new RegExp(`<@${openerId}>`));
+  assert.match(rendered.content, /Master TOFC Models/);
+  assert.match(rendered.content, /about 6 hours of video in 14 chapters/);
+  assert.match(rendered.content, /Introduction, DeepCharts Setup, Checklist & No trade days/);
+  assert.match(rendered.content, /Price Action \(Context\), AMT \(Location\), Orderflow \(Confirmation\)/);
+  assert.match(rendered.content, /TOFC Model 1 to 6, Domino effect models, END/);
+  assert.match(rendered.content, /visual, an explanation video, a case study and a quiz/);
+});
+
+test('a Ticket Tool ticket with no FAQ match still gets an acknowledgement', () => {
+  const unmatched = {
+    content: '<@111111111111111111> Welcome',
+    author: { bot: true },
+    embeds: [
+      {
+        description: 'Thank you for reaching out to us.',
+        fields: [
+          { name: 'Why are you opening this ticket?', value: 'zzzz-unmatched-request' },
+        ],
+      },
+    ],
+    mentions: { users: new Map() },
+  };
+  const prompt = extractTicketToolPrompt(unmatched);
+  const decision = decideReply({
+    text: prompt.question,
+    reason: detectTicketReason([messageToText(unmatched)]),
+    authorIsStaff: false,
+    state: emptyState(),
+    faq,
+    maxReplies: 6,
+    acknowledgeWhenBlank: true,
+  });
+  assert.equal(decision.action, 'reply');
+  assert.equal(decision.kind, 'handoff');
+  const rendered = renderReply({
+    kind: decision.kind,
+    entry: decision.entry,
+    faq,
+    userId: '111111111111111111',
+    withGreeting: true,
+  });
+  assert.match(rendered.content, /team will get back to you soon/);
+
+  const welcomeOnly = extractTicketToolPrompt({
+    content: '<@111111111111111111> Welcome',
+    embeds: [{ description: 'Thank you for reaching out to us.' }],
+  });
+  assert.equal(welcomeOnly.question, '');
+  const blank = decideReply({
+    text: welcomeOnly.question,
+    reason: 'unknown',
+    authorIsStaff: false,
+    state: emptyState(),
+    faq,
+    maxReplies: 6,
+    acknowledgeWhenBlank: true,
+  });
+  assert.equal(blank.action, 'reply');
+  assert.equal(blank.kind, 'handoff');
+});
+
+test('bot messages reach the ticket handler before they are ignored', () => {
+  const source = readFileSync(new URL('../src/events/messageCreate.js', import.meta.url), 'utf8');
+  const handlerAt = source.indexOf('await handleTicketMessage(message, client);');
+  const botReturnAt = source.indexOf('if (message.author.bot) return;');
+  assert.ok(handlerAt > 0);
+  assert.ok(botReturnAt > handlerAt);
+  assert.equal(source.includes('if (message.author.bot || !message.guild) return;'), false);
 });
 
 test('panel reason is read from one Ticket Tool message and a full menu is ignored', () => {
@@ -386,6 +538,9 @@ test('existing scheduled chat messages and their cron entries are unchanged', ()
   assert.match(checkin, /How did we do today\? <@&\$\{process\.env\.PREMIUM_ROLE_ID\}>/);
   assert.match(checkin, /How did we do today\? @everyone/);
   assert.match(hype, /Match starting soon, who's ready to drop into NY session and secure the loot\? @everyone/);
+  assert.match(app, /cron\.schedule\('0 6 \* \* \*', runSafeTask\('birthday_check'/);
+  assert.match(app, /cron\.schedule\('\* \* \* \* \*', runSafeTask\('giveaway_check'/);
+  assert.match(app, /cron\.schedule\('\*\/15 \* \* \* \*', runSafeTask\('counter_update'/);
   assert.match(app, /cron\.schedule\('0 11 \* \* 1-5', runSafeTask\('daily_checkin'/);
   assert.match(app, /cron\.schedule\('0 9 \* \* 1-5', runSafeTask\('morning_hype'/);
   assert.match(app, /GatewayIntentBits\.MessageContent/);

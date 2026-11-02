@@ -4,13 +4,34 @@ import { getTicketAutoReplyConfig, staffConfigIsSet } from '../../config/ticketA
 import { loadTicketFaq } from './faqStore.js';
 import {
   detectTicketReason,
+  extractTicketToolPrompt,
   hasTicketPermissions,
   isMissingAccessError,
   isStaffMember,
   isTicketChannel,
   messageToText,
+  openerFromOverwrites,
+  ticketChannelDecision,
+  categoryMatches,
 } from './detect.js';
-import { buildStateFromHistory, decideReply, renderReply } from './decide.js';
+import { buildStateFromHistory, decideReply, isOurAutoReply, renderReply } from './decide.js';
+
+const OPENING_WAIT_MS = [2000, 2000, 2000];
+
+function ticketLog(message) {
+  console.log(`[ticket-auto-reply] ${message}`);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function enqueue(channelId, task) {
+  const previous = locks.get(channelId) || Promise.resolve();
+  const current = previous.catch(() => {}).then(task);
+  locks.set(channelId, current);
+  return current;
+}
 
 const ACCESS_WARNING = [
   'Ticket Tool sets per-channel permissions, so TOFC Bot cannot see ticket channels unless its role is allowed.',
@@ -37,9 +58,9 @@ export function logTicketAccessWarning(channel, error) {
   if (accessWarned.has(id)) return;
   accessWarned.add(id);
   const code = error?.code ? ` Discord error ${error.code}.` : '';
-  logger.warn(
-    `TOFC ticket auto-reply: missing access to #${channel?.name || id} (${id}). ${ACCESS_WARNING}${code}`
-  );
+  const line = `skipped: missing access to #${channel?.name || id} (${id}). ${ACCESS_WARNING}${code}`;
+  ticketLog(line);
+  logger.warn(`TOFC ticket auto-reply: ${line}`);
 }
 
 export function forgetTicketChannel(channelId) {
@@ -77,7 +98,7 @@ export async function auditTicketAccess(client) {
       if (expected) {
         const visible = guild.channels.cache.some((channel) =>
           channel.type === ChannelType.GuildCategory
-          && channel.name.toLowerCase().includes(expected)
+          && categoryMatches(channel.name, expected)
         );
         if (!visible) {
           logger.warn(
@@ -103,20 +124,101 @@ export async function handleTicketMessage(message, client) {
   try {
     const config = getTicketAutoReplyConfig();
     if (!config.enabled) return;
-    if (!message.guild || message.author?.bot || message.webhookId) return;
-    if (!isTicketChannel(message.channel, config)) return;
+    if (!message.guild || !message.author || !message.channel) return;
 
-    const key = message.channel.id;
-    const previous = locks.get(key) || Promise.resolve();
-    const current = previous.catch(() => {}).then(() => processTicketMessage(message, client, config));
-    locks.set(key, current);
-    await current;
+    const verdict = ticketChannelDecision(message.channel, config);
+    if (!verdict.match) {
+      if (String(verdict.reason || '').startsWith('category')) {
+        ticketLog(`skipped: #${message.channel.name} (${message.channel.id}) ${verdict.reason}`);
+      }
+      return;
+    }
+
+    if (message.author.id && message.author.id === client.user?.id) {
+      ticketLog(`skipped: our own message in #${message.channel.name} (${message.channel.id})`);
+      return;
+    }
+
+    const categoryLabel = verdict.category || (verdict.categoryUnverified ? 'not visible' : '');
+    ticketLog(
+      `ticket detected: #${message.channel.name} (${message.channel.id}) category="${categoryLabel}" from ${message.author.tag || message.author.username || message.author.id} bot=${Boolean(message.author.bot)}`
+    );
+
+    await enqueue(message.channel.id, () => processTicketMessage(message, client, config));
   } catch (error) {
+    ticketLog(`error in #${message.channel?.name || message.channelId}: ${error.message}`);
     logger.error(
       `TOFC ticket auto-reply failed in #${message.channel?.name || message.channelId}:`,
       error
     );
   }
+}
+
+export async function handleNewTicketChannel(channel, client) {
+  const config = getTicketAutoReplyConfig();
+  if (!config.enabled || !channel?.guild) return;
+
+  const verdict = ticketChannelDecision(channel, config);
+  if (!verdict.match) {
+    if (String(verdict.reason || '').startsWith('category')) {
+      ticketLog(`skipped: #${channel.name} (${channel.id}) ${verdict.reason}`);
+    }
+    return;
+  }
+
+  ticketLog(
+    `ticket detected: #${channel.name} (${channel.id}) created category="${verdict.category || 'not visible yet'}"`
+  );
+
+  const me = channel.guild.members?.me;
+  if (me && !hasTicketPermissions(channel.permissionsFor(me))) {
+    logTicketAccessWarning(channel);
+  }
+
+  for (let attempt = 0; attempt < OPENING_WAIT_MS.length; attempt += 1) {
+    await sleep(OPENING_WAIT_MS[attempt]);
+    const done = await enqueue(channel.id, () => replyFromOpeningHistory(channel, client, config));
+    if (done) return;
+    ticketLog(`waiting for Ticket Tool's opening message in #${channel.name} (${channel.id}), attempt ${attempt + 1}`);
+  }
+
+  ticketLog(`skipped: no opening message in #${channel.name} (${channel.id}) after waiting`);
+}
+
+async function replyFromOpeningHistory(channel, client, config) {
+  const faq = loadTicketFaq();
+  if (!faq) {
+    ticketLog('skipped: FAQ file could not be read');
+    return true;
+  }
+
+  let fetched;
+  try {
+    fetched = await channel.messages.fetch({ limit: 20 });
+  } catch (error) {
+    if (isMissingAccessError(error)) {
+      logTicketAccessWarning(channel, error);
+      return true;
+    }
+    ticketLog(`could not read #${channel.name} (${channel.id}): ${error.message}`);
+    return false;
+  }
+
+  const ordered = [...fetched.values()].sort(
+    (a, b) => (a.createdTimestamp || 0) - (b.createdTimestamp || 0)
+  );
+  if (ordered.some((candidate) => candidate.author?.id === client.user?.id && isOurAutoReply(candidate.content, faq))) {
+    ticketLog(`skipped: already replied in #${channel.name} (${channel.id})`);
+    return true;
+  }
+
+  const toolMessage = [...ordered].reverse().find((candidate) =>
+    candidate.author?.bot && candidate.author.id !== client.user?.id
+  );
+  if (!toolMessage) return false;
+
+  await processTicketMessage(toolMessage, client, config);
+  return true;
 }
 
 async function processTicketMessage(message, client, config) {
@@ -127,13 +229,21 @@ async function processTicketMessage(message, client, config) {
     return;
   }
 
-  const prefix = (process.env.PREFIX || '!').trim() || '!';
-  if ((message.content || '').trim().startsWith(prefix)) return;
+  if (!message.author.bot) {
+    const prefix = (process.env.PREFIX || '!').trim() || '!';
+    if ((message.content || '').trim().startsWith(prefix)) {
+      ticketLog(`skipped: prefix command in #${message.channel.name} (${message.channel.id})`);
+      return;
+    }
+  }
 
   if (!staffConfigIsSet(config)) warnStaffUnset();
 
   const faq = loadTicketFaq();
-  if (!faq) return;
+  if (!faq) {
+    ticketLog(`skipped: FAQ file could not be read for #${message.channel.name} (${message.channel.id})`);
+    return;
+  }
 
   let fetched;
   try {
@@ -176,23 +286,48 @@ async function processTicketMessage(message, client, config) {
     isStaffUser: (userId) => staffByUser.get(userId) === true,
   });
 
+  const fromTool = Boolean(message.author.bot);
+  const prompt = fromTool
+    ? extractTicketToolPrompt(message)
+    : { question: message.content || '', fieldName: 'message', openerId: message.author.id };
+  if (!prompt.openerId) {
+    prompt.openerId = openerFromOverwrites(message.channel, client.user?.id);
+  }
+
+  ticketLog(
+    `reason extracted: field="${prompt.fieldName || 'none'}" value="${prompt.question || ''}" opener=${prompt.openerId || 'unknown'} panel=${reason} in #${message.channel.name} (${message.channel.id})`
+  );
+
   const decision = decideReply({
-    text: message.content,
+    text: prompt.question,
     hasAttachment: (message.attachments?.size || 0) > 0,
     reason,
-    authorIsStaff: staffByUser.get(message.author.id) === true,
+    authorIsStaff: fromTool ? false : staffByUser.get(message.author.id) === true,
     state,
     faq,
     maxReplies: config.maxReplies,
+    acknowledgeWhenBlank: fromTool,
   });
 
-  if (decision.action !== 'reply') return;
+  if (decision.action !== 'reply') {
+    const why = decision.action === 'stop'
+      ? 'staff already replied or the author is staff'
+      : 'already answered, duplicate, blank, or over the reply cap';
+    ticketLog(`skipped: ${why} in #${message.channel.name} (${message.channel.id})`);
+    return;
+  }
+
+  if (decision.kind === 'answer') {
+    ticketLog(`FAQ match: ${decision.entry.id} in #${message.channel.name} (${message.channel.id})`);
+  } else {
+    ticketLog(`no FAQ match (${decision.kind}) in #${message.channel.name} (${message.channel.id}); sending an acknowledgement`);
+  }
 
   const rendered = renderReply({
     kind: decision.kind,
     entry: decision.entry,
     faq,
-    userId: message.author.id,
+    userId: prompt.openerId,
     withGreeting: decision.withGreeting,
     staffRoleIds: decision.ping ? config.staffRoleIds : [],
     staffUserIds: decision.ping ? config.staffUserIds : [],
@@ -211,8 +346,8 @@ async function processTicketMessage(message, client, config) {
     throw error;
   }
 
-  const entryNote = decision.entry?.id ? ` FAQ: ${decision.entry.id}.` : '';
+  ticketLog(`reply sent in #${message.channel.name} (${message.channel.id}) kind=${decision.kind}`);
   logger.info(
-    `TOFC ticket auto-reply: sent ${decision.kind} in #${message.channel.name} (${message.channel.id}) for ${message.author.tag}. Reason: ${reason}.${entryNote}`
+    `TOFC ticket auto-reply: sent ${decision.kind} in #${message.channel.name} (${message.channel.id}). Reason: ${reason}.`
   );
 }
