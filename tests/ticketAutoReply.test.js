@@ -76,14 +76,23 @@ test('FAQ file loads the confirmed facts and keeps unconfirmed facts out of repl
   assert.ok(faq);
   assert.equal(faq.inviteRewardAck, "Thanks, we're checking your invites, you'll get your reward here.");
   const priceEntry = faq.entries.find((entry) => entry.id === 'whop-prices');
+  const originalIds = new Set([
+    'what-tofc-sells',
+    'premium-includes',
+    'education-course',
+    'invite-rewards',
+    'trader-of-the-month',
+    'weekly-best',
+  ]);
   const spokenWithoutPrices = [
     faq.greeting,
     faq.greetingPrompt,
     faq.handoff,
     faq.inviteRewardAck,
-    ...faq.entries.filter((entry) => entry.id !== 'whop-prices').map((entry) => entry.answer),
+    ...faq.entries.filter((entry) => originalIds.has(entry.id)).map((entry) => entry.answer),
   ].join('\n');
   assert.equal(/https?:\/\/|www\.|TODO|\$|€|£/i.test(spokenWithoutPrices), false);
+  assert.equal(JSON.stringify(faq).includes('prestige-1.whop.site'), false);
   assert.match(spokenWithoutPrices, /Premium membership and 1:1 coaching through Whop/);
   assert.match(spokenWithoutPrices, /15:30 Amsterdam time/);
   assert.match(spokenWithoutPrices, /Master TOFC Models/);
@@ -685,6 +694,61 @@ test('rapid member messages debounce into one combined reply', () => {
     key: '1566877490943885342:brndnn',
     texts: ['we want a partnership with you guys', 'hello'],
   });
+});
+
+test('knowledge-base entries match a realistic member question', () => {
+  const cases = [
+    ['do you trade from the vah or the poc', 'value-area-levels'],
+    ['which session do you trade, ny or london', 'which-session'],
+    ['which prop firm do you recommend', 'prop-firms'],
+    ['how many contracts should I trade on mnq', 'risk-management'],
+    ['what do the cvd bubbles tell me', 'cvd-delta-bubbles'],
+    ['where can I learn orderflow', 'where-to-learn-orderflow'],
+    ['which gex levels should I mark', 'gex-levels-usage'],
+    ['do I get all the models with premium', 'premium-models-access'],
+    ['when is the live lesson', 'community-calls-schedule'],
+    ['how many models are there', 'tofc-models-overview'],
+    ['which platform should I use for orderflow', 'orderflow-platform'],
+    ['does deepcharts connect to tradovate or only rithmic', 'deepcharts-data-connection'],
+    ['is today a no trade day because of cpi', 'no-trade-days'],
+    ['where do I find the deepcharts settings', 'deepcharts-settings-templates'],
+    ['is there a deepcharts discount code', 'deepcharts-code'],
+    ['can I copy your trades', 'copy-trading-signals'],
+    ['how long does it take to learn orderflow', 'time-to-learn-orderflow'],
+  ];
+  for (const [question, id] of cases) {
+    const match = matchQuestion(question, faq);
+    assert.equal(match.entry?.id, id, question);
+  }
+});
+
+test('existing FAQ questions still map to their original entries', () => {
+  const cases = [
+    ['How much is premium?', 'whop-prices'],
+    ['how much is premium', 'whop-prices'],
+    ['whats the whop price', 'whop-prices'],
+    ['deepcharts course', 'education-course'],
+    ['What is the Master TOFC Models course?', 'education-course'],
+    ['Where are the GEX levels posted?', 'premium-includes'],
+    ['What does TOFC sell?', 'what-tofc-sells'],
+    ['Do you offer 1:1 coaching?', 'what-tofc-sells'],
+    ['How do invite rewards work?', 'invite-rewards'],
+    ['How does trader of the month work?', 'trader-of-the-month'],
+    ['When are the weekly best traders highlighted?', 'weekly-best'],
+  ];
+  for (const [question, id] of cases) {
+    const match = matchQuestion(question, faq);
+    assert.equal(match.entry?.id, id, question);
+  }
+});
+
+test('casual chat and short-code lookalikes do not hit a knowledge-base entry', () => {
+  for (const question of ['my stream lagged', 'just chatting about lunch today', 'the epoch of this move', 'I might trade mnqs later']) {
+    const match = matchQuestion(question, faq);
+    assert.equal(match.type, 'none', `${question} -> ${match.entry?.id || match.type}`);
+  }
+  assert.equal(matchQuestion('where is the poc', faq).entry.id, 'value-area-levels');
+  assert.equal(matchQuestion('should I use mnq or nq', faq).entry.id, 'risk-management');
 });
 
 test('existing scheduled chat messages and their cron entries are unchanged', () => {

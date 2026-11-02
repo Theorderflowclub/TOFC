@@ -42,9 +42,11 @@ function levenshtein(left, right) {
 
 function fuzzyEqual(token, part) {
   if (token === part) return true;
+  // Abbreviations such as vah, poc, cpi, mnq and gex only match the whole word.
+  // A longer token like "pocs" or "mnqs" must not fuzzy-match them.
+  if (!token || !part || part.length < 4 || token.length < 4) return false;
   const longer = Math.max(token.length, part.length);
-  if (longer < 4) return false;
-  if (!token || !part || token[0] !== part[0]) return false;
+  if (token[0] !== part[0]) return false;
   const limit = longer >= 6 ? 2 : 1;
   if (Math.abs(token.length - part.length) > limit) return false;
   return levenshtein(token, part) <= limit;
