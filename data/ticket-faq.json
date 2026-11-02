@@ -1,0 +1,175 @@
+{
+  "notes": "Edit this file to change what TOFC Bot says in Ticket Tool tickets. You do not need to change any code. entries[].answer is the exact text the bot may send. phrases are words or phrases that must show up in the member's message; weight is how strongly each one counts (a score of 3 or more, and clearly ahead of every other entry, is a confident match). coversHandoff lets that entry answer even if the question also sounds like a handoff topic. handoffTopics are questions the bot must not guess (prices, links, refunds, who won). The todos list is for Brandon only — the bot never reads it to members. Do not add a price, URL, discount code, or promise until it is confirmed. On Railway this file ships inside the image, so commit the edit and redeploy. Locally it reloads on the next ticket message when the file changes.",
+  "greeting": "Hey {user}, thanks for opening a ticket.",
+  "greetingPrompt": "Send your question here whenever you're ready. I'll answer if it's covered in the TOFC FAQ, and otherwise the team will follow up.",
+  "handoff": "Thanks for reaching out. A member of the team will get back to you soon.",
+  "inviteRewardAck": "Thanks, we're checking your invites, you'll get your reward here.",
+  "minScore": 3,
+  "minMargin": 1,
+  "todos": [
+    "Premium membership price — not confirmed. Do not guess a number.",
+    "1:1 coaching price — not confirmed. Do not guess a number.",
+    "Whop checkout / sales page URL — not confirmed. The bot may say Premium and 1:1 are sold through Whop, but it must not invent a link.",
+    "Whop affiliate link URL — not confirmed. The bot may explain the affiliate reward, but it must not invent a link.",
+    "Current Trader of the Month winner — announced in Discord, not stored here. Do not name a winner.",
+    "Refunds, cancellations, and billing problems — no confirmed policy. These always go to the team.",
+    "Server invite link — not confirmed. Do not invent one."
+  ],
+  "handoffTopics": [
+    {
+      "id": "pricing",
+      "phrases": [
+        { "text": "how much", "weight": 4 },
+        { "text": "what does it cost", "weight": 4 },
+        { "text": "whats the price", "weight": 4 },
+        { "text": "what is the price", "weight": 4 },
+        { "text": "price", "weight": 3 },
+        { "text": "pricing", "weight": 4 },
+        { "text": "cost", "weight": 3 },
+        { "text": "expensive", "weight": 3 },
+        { "text": "discount code", "weight": 4 },
+        { "text": "promo code", "weight": 4 },
+        { "text": "coupon", "weight": 4 }
+      ]
+    },
+    {
+      "id": "checkout-link",
+      "phrases": [
+        { "text": "whop link", "weight": 4 },
+        { "text": "checkout", "weight": 3 },
+        { "text": "sales link", "weight": 4 },
+        { "text": "purchase link", "weight": 4 },
+        { "text": "sign up link", "weight": 4 },
+        { "text": "signup link", "weight": 4 },
+        { "text": "payment link", "weight": 4 },
+        { "text": "send the link", "weight": 4 },
+        { "text": "send me the link", "weight": 4 },
+        { "text": "where do i pay", "weight": 4 },
+        { "text": "a link", "weight": 3 }
+      ]
+    },
+    {
+      "id": "refunds",
+      "phrases": [
+        { "text": "refund", "weight": 4 },
+        { "text": "money back", "weight": 4 },
+        { "text": "cancel my", "weight": 3 },
+        { "text": "cancellation", "weight": 3 }
+      ]
+    },
+    {
+      "id": "current-winner",
+      "phrases": [
+        { "text": "who won", "weight": 4 },
+        { "text": "who is the winner", "weight": 4 },
+        { "text": "current winner", "weight": 4 },
+        { "text": "this months winner", "weight": 4 }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "what-tofc-sells",
+      "question": "What does TOFC sell?",
+      "answer": "TOFC sells Premium membership and 1:1 coaching through Whop.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "premium membership", "weight": 4 },
+        { "text": "1:1 coaching", "weight": 4 },
+        { "text": "1 on 1", "weight": 4 },
+        { "text": "one on one", "weight": 4 },
+        { "text": "what do you sell", "weight": 4 },
+        { "text": "what does tofc sell", "weight": 4 },
+        { "text": "what is premium", "weight": 4 },
+        { "text": "whats premium", "weight": 4 },
+        { "text": "buy premium", "weight": 4 },
+        { "text": "where do i buy", "weight": 4 },
+        { "text": "get premium", "weight": 3 },
+        { "text": "join premium", "weight": 3 },
+        { "text": "coaching", "weight": 3 },
+        { "text": "on whop", "weight": 3 }
+      ]
+    },
+    {
+      "id": "premium-includes",
+      "question": "What do Premium members get?",
+      "answer": "Premium members get the daily NQ GEX levels posted every trading day before the New York open (15:30 Amsterdam time), plus the education course.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "gex", "weight": 4 },
+        { "text": "daily levels", "weight": 4 },
+        { "text": "levels posted", "weight": 4 },
+        { "text": "nq levels", "weight": 4 },
+        { "text": "what do premium members get", "weight": 5 },
+        { "text": "premium membership include", "weight": 5 },
+        { "text": "whats included", "weight": 4 },
+        { "text": "what is included", "weight": 4 },
+        { "text": "what do i get", "weight": 3 },
+        { "text": "new york open", "weight": 3 },
+        { "text": "amsterdam", "weight": 2 },
+        { "text": "before the open", "weight": 3 }
+      ]
+    },
+    {
+      "id": "education-course",
+      "question": "What is the education course?",
+      "answer": "The education course on Whop is \"Master TOFC Models\": about 6 hours of video in 14 chapters — Introduction, DeepCharts Setup, Checklist & No trade days, Price Action (Context), AMT (Location), Orderflow (Confirmation), TOFC Models 1–6, Domino effect models, END. Each model has a visual, an explanation video, a case study and a quiz. TOFC charts on DeepCharts.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "master tofc models", "weight": 5 },
+        { "text": "education course", "weight": 4 },
+        { "text": "education program", "weight": 4 },
+        { "text": "the course", "weight": 3 },
+        { "text": "deepcharts", "weight": 4 },
+        { "text": "chapters", "weight": 3 },
+        { "text": "case study", "weight": 3 },
+        { "text": "tofc models", "weight": 4 },
+        { "text": "price action", "weight": 3 },
+        { "text": "domino", "weight": 3 },
+        { "text": "how long is the course", "weight": 4 }
+      ]
+    },
+    {
+      "id": "invite-rewards",
+      "question": "How do invite rewards work?",
+      "answer": "Invite 10 people who stay in the server 14+ days (accounts 30+ days old) to get 50% off your first month of Premium. If someone buys through your Whop affiliate link, you get one month of Premium free. Claim it by opening a ticket and choosing \"🎁 Claim invite reward\". This bot does not send reward codes.",
+      "coversHandoff": ["pricing"],
+      "phrases": [
+        { "text": "invite reward", "weight": 5 },
+        { "text": "invite rewards", "weight": 5 },
+        { "text": "invites", "weight": 3 },
+        { "text": "affiliate", "weight": 4 },
+        { "text": "50 percent", "weight": 3 },
+        { "text": "14 days", "weight": 3 },
+        { "text": "referral", "weight": 3 }
+      ]
+    },
+    {
+      "id": "trader-of-the-month",
+      "question": "How does Trader of the Month work?",
+      "answer": "Trader of the Month uses points each month: a payout is 4, a funded account is 2, and a winning day is 1. Sim/demo does not count. The winner gets a free month of Premium, announced on the 1st in 〔🏆〕tofc-best-weekly-traders.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "trader of the month", "weight": 5 },
+        { "text": "totm", "weight": 4 },
+        { "text": "sim count", "weight": 4 },
+        { "text": "demo count", "weight": 4 },
+        { "text": "does sim", "weight": 3 },
+        { "text": "does demo", "weight": 3 }
+      ]
+    },
+    {
+      "id": "weekly-best",
+      "question": "When are weekly best traders highlighted?",
+      "answer": "Weekly best traders are highlighted every Friday in 〔🏆〕tofc-best-weekly-traders.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "weekly best", "weight": 5 },
+        { "text": "best traders", "weight": 4 },
+        { "text": "best trader", "weight": 4 },
+        { "text": "weekly traders", "weight": 4 },
+        { "text": "every friday", "weight": 3 }
+      ]
+    }
+  ]
+}

@@ -7,11 +7,13 @@ import {
 } from '../utils/database.js';
 import { getServerCounters, saveServerCounters } from '../services/serverstatsService.js';
 import { logger } from '../utils/logger.js';
+import { forgetTicketChannel } from '../services/ticketAutoReply/service.js';
 
 export default {
     name: 'channelDelete',
     async execute(channel, client) {
-        
+        forgetTicketChannel(channel?.id);
+
         if (channel.type === 0 && channel.guild) {
             try {
                 const ticketData = await getTicketData(channel.guild.id, channel.id);
