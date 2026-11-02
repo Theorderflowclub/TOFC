@@ -199,6 +199,255 @@
         { "text": "weekly traders", "weight": 4 },
         { "text": "every friday", "weight": 3 }
       ]
+    },
+    {
+      "id": "value-area-levels",
+      "question": "Which levels do you trade from: VAH/VAL/POC, overnight or daily?",
+      "answer": "VAH, VAL and POC are the best areas to trade from. The overnight VAH, VAL and POC are where we look for trades. Previous fair value area highs/lows and POC are key zones too. For the models, the cash session levels matter most.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "vah", "weight": 4 },
+        { "text": "poc", "weight": 4 },
+        { "text": "value area", "weight": 5 },
+        { "text": "overnight levels", "weight": 5 },
+        { "text": "ovn", "weight": 4 },
+        { "text": "lvn", "weight": 4 },
+        { "text": "hvn", "weight": 4 }
+      ]
+    },
+    {
+      "id": "which-session",
+      "question": "Which session do you trade: NY, London or Asia?",
+      "answer": "New York AM, the cash session, works best. The other sessions have more manipulation, so Chromey rarely trades outside New York. If you trade overnight, use the previous New York session data as your baseline.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "which session", "weight": 6 },
+        { "text": "what session", "weight": 6 },
+        { "text": "asia session", "weight": 5 },
+        { "text": "london session", "weight": 5 },
+        { "text": "ny session", "weight": 5 },
+        { "text": "new york session", "weight": 5 },
+        { "text": "am or pm", "weight": 5 }
+      ]
+    },
+    {
+      "id": "prop-firms",
+      "question": "Which prop firm do you use / recommend, and how do I pass an eval?",
+      "answer": "What Chromey currently uses and recommends is Lucid. It pays out fast, and you can keep trading after you request a payout (rules differ per prop firm). A good start is a Lucid 25k eval with MotiveWave, which is free with an active Lucid account. To pass evals, learn the TOFC models and check Chromey's YouTube: https://www.youtube.com/@Chromeymono",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "prop firm", "weight": 6 },
+        { "text": "propfirm", "weight": 6 },
+        { "text": "which prop", "weight": 6 },
+        { "text": "lucid", "weight": 4 },
+        { "text": "apex", "weight": 4 },
+        { "text": "topstep", "weight": 4 },
+        { "text": "tradeify", "weight": 4 },
+        { "text": "pass the eval", "weight": 5 },
+        { "text": "pass my eval", "weight": 5 },
+        { "text": "pass an eval", "weight": 5 }
+      ]
+    },
+    {
+      "id": "risk-management",
+      "question": "How many contracts / what risk rules do you use?",
+      "answer": "Mostly micros. Set your daily risk limit at the broker so you can't blow more than you planned. After a loss, wait half an hour before the next trade. If you chart NQ and execute on MNQ, make sure both are rolled over to the same contract.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "how many contracts", "weight": 6 },
+        { "text": "risk management", "weight": 5 },
+        { "text": "risk per trade", "weight": 5 },
+        { "text": "mnq", "weight": 4 },
+        { "text": "daily loss", "weight": 5 },
+        { "text": "trade limit", "weight": 5 }
+      ]
+    },
+    {
+      "id": "cvd-delta-bubbles",
+      "question": "What do CVD, delta and the bubbles tell me?",
+      "answer": "The bubbles (deep trades) show executed market orders, not resting limit orders. Heavy aggressive buying at a candle high with no continuation can mean absorption. Volume is more useful than delta: high buy volume means a higher chance of slicing through a level.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "cvd", "weight": 5 },
+        { "text": "bubbles", "weight": 5 },
+        { "text": "deep trades", "weight": 5 },
+        { "text": "absorption", "weight": 4 },
+        { "text": "footprint", "weight": 4 },
+        { "text": "ask and bid", "weight": 4 }
+      ]
+    },
+    {
+      "id": "where-to-learn-orderflow",
+      "question": "Where can I learn orderflow / AMT / footprint? Any videos you recommend?",
+      "answer": "Best place is our own material: the Master TOFC Models course on Whop (included with Premium) covers the full TOFC system, orderflow, AMT and price action. For free content, check Chromey's YouTube (https://www.youtube.com/@Chromeymono) and join the free Wednesday community lesson at 11:00 AM New York time.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "learn orderflow", "weight": 6 },
+        { "text": "learn order flow", "weight": 6 },
+        { "text": "where can i learn", "weight": 5 },
+        { "text": "recommend videos", "weight": 5 },
+        { "text": "auction market theory", "weight": 5 },
+        { "text": "market structure", "weight": 3 }
+      ]
+    },
+    {
+      "id": "gex-levels-usage",
+      "question": "Which GEX levels do you use / mark?",
+      "answer": "If you scalp, use the intraday 0DTE levels. EOD levels are for higher-timeframe traders. Intraday 0DTE data is only there once New York opens.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "which gex", "weight": 6 },
+        { "text": "mark gex", "weight": 6 },
+        { "text": "eod gamma", "weight": 6 },
+        { "text": "0dte", "weight": 5 },
+        { "text": "eod levels", "weight": 5 }
+      ]
+    },
+    {
+      "id": "premium-models-access",
+      "question": "Do I get all the TOFC models with Premium? Is there a PDF / documentation?",
+      "answer": "Yes. Premium (Prestige One) gives you access to all TOFC models with full documentation, the Master TOFC Models course on Whop, the DeepCharts templates and Chromey's premarket plan. There are no trade callouts or signals: we teach you the system so you can trade it yourself.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "all the models", "weight": 6 },
+        { "text": "all models", "weight": 5 },
+        { "text": "premarket plan", "weight": 6 },
+        { "text": "do i get the models", "weight": 6 }
+      ]
+    },
+    {
+      "id": "community-calls-schedule",
+      "question": "When are the live lessons / community calls, and how do I join?",
+      "answer": "Every Wednesday is community day: a free live lesson at 11:00 AM New York time, right after trading hours, where we go over the day and the TOFC models. Join through the Discord event in the server (details are pinned). On Fridays there's a community lesson too, for example psychology with nq.brandon. Chromey also streams on Kick: https://kick.com/chromemono",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "community call", "weight": 6 },
+        { "text": "community day", "weight": 6 },
+        { "text": "live lesson", "weight": 5 },
+        { "text": "free lesson", "weight": 5 },
+        { "text": "group lesson", "weight": 5 },
+        { "text": "when is the lesson", "weight": 6 },
+        { "text": "going live", "weight": 4 }
+      ]
+    },
+    {
+      "id": "tofc-models-overview",
+      "question": "How many models are there and when is a model valid?",
+      "answer": "The course covers TOFC Model 1 to 6 plus the Domino Effect Models. Each model has a visual, an explanation video, a case study and a quiz. Not sure a setup is valid? Post a screenshot in the chat.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "how many models", "weight": 6 },
+        { "text": "valid model", "weight": 6 },
+        { "text": "model 1", "weight": 5 },
+        { "text": "model 2", "weight": 5 },
+        { "text": "model 3", "weight": 5 },
+        { "text": "model 4", "weight": 5 },
+        { "text": "model 5", "weight": 5 },
+        { "text": "model 6", "weight": 5 }
+      ]
+    },
+    {
+      "id": "orderflow-platform",
+      "question": "Which orderflow platform should I use? Is DeepCharts required?",
+      "answer": "Most of us use DeepCharts. It's Chromey's personal favorite. Get it through our partner link for the max discount: https://my.deepcharts.com/redirect/deepchart?affId=TOFC\nAlternatives: ATAS, Sierra Chart, Quantower, and Bookmap for an order heatmap. MotiveWave is free with an active Lucid (Rithmic) account.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "which platform", "weight": 6 },
+        { "text": "best platform", "weight": 6 },
+        { "text": "what platform", "weight": 6 },
+        { "text": "deepcharts needed", "weight": 6 },
+        { "text": "need deepcharts", "weight": 6 },
+        { "text": "charting software", "weight": 5 },
+        { "text": "orderflow software", "weight": 5 },
+        { "text": "atas", "weight": 4 },
+        { "text": "motivewave", "weight": 4 },
+        { "text": "sierra chart", "weight": 4 },
+        { "text": "quantower", "weight": 4 },
+        { "text": "bookmap", "weight": 4 }
+      ]
+    },
+    {
+      "id": "deepcharts-data-connection",
+      "question": "Can DeepCharts connect to Tradovate / trade prop firms directly, or only Rithmic?",
+      "answer": "DeepCharts connects through Rithmic only, so not Tradovate. If your account is on Tradovate, you can buy CME market data for DeepCharts separately. More DeepCharts questions? Hop in a call and we'll help you.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "rithmic", "weight": 5 },
+        { "text": "rythmic", "weight": 5 },
+        { "text": "tradovate", "weight": 5 },
+        { "text": "ninjatrader", "weight": 4 },
+        { "text": "connect data", "weight": 5 },
+        { "text": "data feed", "weight": 5 },
+        { "text": "prop firms directly", "weight": 8 }
+      ]
+    },
+    {
+      "id": "no-trade-days",
+      "question": "When do you not trade? Which market conditions do you avoid?",
+      "answer": "Avoid low-volatility days and balanced markets where the balance range is under 100 pips, or when optionsflow is balanced (calls and puts at the same values). Also be careful around opex and news (CPI, PPI, FOMC). There's a lot of manipulation then.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "no trade day", "weight": 6 },
+        { "text": "when not to trade", "weight": 6 },
+        { "text": "should i skip", "weight": 5 },
+        { "text": "news days", "weight": 5 },
+        { "text": "low volatility", "weight": 5 },
+        { "text": "cpi", "weight": 4 },
+        { "text": "fomc", "weight": 4 }
+      ]
+    },
+    {
+      "id": "deepcharts-settings-templates",
+      "question": "Where do I find the DeepCharts settings / templates?",
+      "answer": "There's a setup video here: https://www.youtube.com/watch?v=qMkcdf_BcEo. The full TOFC DeepCharts templates are in the Premium group. To load them, put the template file in the right folder first, then add the \"Deep Profile\" indicator and choose the indicator template.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "deepcharts settings", "weight": 6 },
+        { "text": "deep charts settings", "weight": 6 },
+        { "text": "deepcharts template", "weight": 6 },
+        { "text": "copy settings", "weight": 4 },
+        { "text": "indicator template", "weight": 5 },
+        { "text": "deep profile", "weight": 5 }
+      ]
+    },
+    {
+      "id": "deepcharts-code",
+      "question": "Is there a DeepCharts discount / code?",
+      "answer": "Yes, we're partnered with DeepCharts. Use our partner link for the max discount: https://my.deepcharts.com/redirect/deepchart?affId=TOFC",
+      "coversHandoff": ["pricing"],
+      "phrases": [
+        { "text": "deepcharts code", "weight": 7 },
+        { "text": "deepcharts discount", "weight": 7 },
+        { "text": "deepcharts price", "weight": 7 },
+        { "text": "how much is deepcharts", "weight": 8 },
+        { "text": "deepcharts link", "weight": 7 },
+        { "text": "deep charts code", "weight": 7 }
+      ]
+    },
+    {
+      "id": "copy-trading-signals",
+      "question": "Do you give signals / callouts, or can I copy your trades?",
+      "answer": "No. TOFC doesn't do trade callouts or signals, Premium included. TOFC is about independence: if you want to copy trades, this isn't the community for you. We teach you everything you need to trade today's market with orderflow and price action, so you can trade the TOFC models yourself.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "callouts", "weight": 6 },
+        { "text": "call outs", "weight": 6 },
+        { "text": "copy trade", "weight": 5 },
+        { "text": "copy your trades", "weight": 6 },
+        { "text": "trade alerts", "weight": 5 },
+        { "text": "live trading", "weight": 4 }
+      ]
+    },
+    {
+      "id": "time-to-learn-orderflow",
+      "question": "How long does it take to learn orderflow?",
+      "answer": "It seems harder than it is. Orderflow is an extra toolkit on top of price action. Mark out the 15–30 min opening range and confirm those zones with orderflow. The Master TOFC Models course takes you through it step by step.",
+      "coversHandoff": [],
+      "phrases": [
+        { "text": "how long to learn", "weight": 7 },
+        { "text": "how long did it take", "weight": 7 },
+        { "text": "how long does it take", "weight": 7 }
+      ]
     }
   ]
 }
