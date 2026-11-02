@@ -203,7 +203,7 @@
     {
       "id": "value-area-levels",
       "question": "Which levels do you trade from: VAH/VAL/POC, overnight or daily?",
-      "answer": "VAH, VAL and POC are the best areas to trade from. The overnight VAH, VAL and POC are where we look for trades. 'Previous' means the previous fair value areas, used as reference. For the models, the cash session levels matter most.",
+      "answer": "VAH, VAL and POC are the best areas to trade from. The overnight VAH, VAL and POC are where we look for trades. Previous fair value area highs/lows and POC are key zones too. For the models, the cash session levels matter most.",
       "coversHandoff": [],
       "phrases": [
         { "text": "vah", "weight": 4 },
@@ -265,7 +265,7 @@
     {
       "id": "cvd-delta-bubbles",
       "question": "What do CVD, delta and the bubbles tell me?",
-      "answer": "The bubbles (deep trades) show executed market orders, not resting limit orders. Heavy aggressive buying at a candle high with no continuation can mean absorption. Volume is more useful than delta: high buy volume means a higher chance of slicing through a level. CVD is good for seeing delta pressure and divergence, so check it at your POIs. Don't cut the ask & bid from your footprint, that's the best info.",
+      "answer": "The bubbles (deep trades) show executed market orders, not resting limit orders. Heavy aggressive buying at a candle high with no continuation can mean absorption. Volume is more useful than delta: high buy volume means a higher chance of slicing through a level.",
       "coversHandoff": [],
       "phrases": [
         { "text": "cvd", "weight": 5 },
@@ -293,7 +293,7 @@
     {
       "id": "gex-levels-usage",
       "question": "Which GEX levels do you use / mark?",
-      "answer": "Check the daily market review and the daily GEX post; that's the pre-plan. If you scalp, use the intraday 0DTE levels. EOD levels are for higher-timeframe traders. Intraday 0DTE data is only there once New York opens.",
+      "answer": "If you scalp, use the intraday 0DTE levels. EOD levels are for higher-timeframe traders. Intraday 0DTE data is only there once New York opens.",
       "coversHandoff": [],
       "phrases": [
         { "text": "which gex", "weight": 6 },
@@ -333,7 +333,7 @@
     {
       "id": "tofc-models-overview",
       "question": "How many models are there and when is a model valid?",
-      "answer": "The course covers TOFC Model 1 to 6 plus the Domino Effect Models. Each model has a visual, an explanation video, a case study and a quiz. Example: Model 1 needs price to tap into the POC, then break and retest from the value area. If price never touched the POC, it's lower probability. Not sure a setup is valid? Post a screenshot in the chat.",
+      "answer": "The course covers TOFC Model 1 to 6 plus the Domino Effect Models. Each model has a visual, an explanation video, a case study and a quiz. Not sure a setup is valid? Post a screenshot in the chat.",
       "coversHandoff": [],
       "phrases": [
         { "text": "how many models", "weight": 6 },
@@ -349,7 +349,7 @@
     {
       "id": "orderflow-platform",
       "question": "Which orderflow platform should I use? Is DeepCharts required?",
-      "answer": "Most of us use DeepCharts. It's the easiest orderflow tool and Chromey's personal favorite. Get it through our partner link for the max discount: https://my.deepcharts.com/redirect/deepchart?affId=TOFC\nAlternatives: ATAS, Sierra Chart (best if you want to build your own settings), Quantower, and Bookmap for an order heatmap. MotiveWave is free with an active Lucid (Rithmic) account.",
+      "answer": "Most of us use DeepCharts. It's Chromey's personal favorite. Get it through our partner link for the max discount: https://my.deepcharts.com/redirect/deepchart?affId=TOFC\nAlternatives: ATAS, Sierra Chart, Quantower, and Bookmap for an order heatmap. MotiveWave is free with an active Lucid (Rithmic) account.",
       "coversHandoff": [],
       "phrases": [
         { "text": "which platform", "weight": 6 },
@@ -384,7 +384,7 @@
     {
       "id": "no-trade-days",
       "question": "When do you not trade? Which market conditions do you avoid?",
-      "answer": "Avoid low-volatility days and balanced markets where the balance range is under 100 pips, or when optionsflow is balanced (calls and puts at the same values). Also be careful around opex and news (CPI, PPI, FOMC). There's a lot of manipulation then. When it's unclear, skip it or keep risk small.",
+      "answer": "Avoid low-volatility days and balanced markets where the balance range is under 100 pips, or when optionsflow is balanced (calls and puts at the same values). Also be careful around opex and news (CPI, PPI, FOMC). There's a lot of manipulation then.",
       "coversHandoff": [],
       "phrases": [
         { "text": "no trade day", "weight": 6 },

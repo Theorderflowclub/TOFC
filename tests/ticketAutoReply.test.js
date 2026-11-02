@@ -742,6 +742,22 @@ test('existing FAQ questions still map to their original entries', () => {
   }
 });
 
+test('student-only question-channel sentences are not in the ticket FAQ', () => {
+  const faqText = readFileSync(new URL('../data/ticket-faq.json', import.meta.url), 'utf8');
+  const hidden = [
+    "Previous' means the previous fair value areas",
+    'check it at your POIs',
+    "Don't cut the ask & bid",
+    "that's the pre-plan",
+    'Model 1 needs price to tap into the POC',
+    'build your own settings',
+    'skip it or keep risk small',
+  ];
+  for (const sentence of hidden) {
+    assert.equal(faqText.includes(sentence), false, sentence);
+  }
+});
+
 test('casual chat and short-code lookalikes do not hit a knowledge-base entry', () => {
   for (const question of ['my stream lagged', 'just chatting about lunch today', 'the epoch of this move', 'I might trade mnqs later']) {
     const match = matchQuestion(question, faq);
