@@ -233,7 +233,7 @@
     {
       "id": "prop-firms",
       "question": "Which prop firm do you use / recommend, and how do I pass an eval?",
-      "answer": "What Chromey currently uses and recommends is Lucid. It pays out fast, and you can keep trading after you request a payout (rules differ per prop firm). A good start is a Lucid 25k eval with MotiveWave, which is free with an active Lucid account. To pass evals, learn the TOFC models and check Chromey's YouTube: https://www.youtube.com/@Chromeymono",
+      "answer": "We currently use and recommend Lucid. It pays out fast, and you can keep trading after you request a payout (rules differ per prop firm). A good start is a Lucid 25k eval. To pass evals, learn the TOFC models and check Chromey's YouTube: https://www.youtube.com/@Chromeymono",
       "coversHandoff": [],
       "phrases": [
         { "text": "prop firm", "weight": 6 },
@@ -349,7 +349,7 @@
     {
       "id": "orderflow-platform",
       "question": "Which orderflow platform should I use? Is DeepCharts required?",
-      "answer": "Most of us use DeepCharts. It's Chromey's personal favorite. Get it through our partner link for the max discount: https://my.deepcharts.com/redirect/deepchart?affId=TOFC\nAlternatives: ATAS, Sierra Chart, Quantower, and Bookmap for an order heatmap. MotiveWave is free with an active Lucid (Rithmic) account.",
+      "answer": "TOFC uses DeepCharts. It is our charting platform, and Premium includes the TOFC DeepCharts templates. Get DeepCharts through our partner link: https://my.deepcharts.com/redirect/deepchart?affId=TOFC",
       "coversHandoff": [],
       "phrases": [
         { "text": "which platform", "weight": 6 },
@@ -430,6 +430,11 @@
       "answer": "No. TOFC doesn't do trade callouts or signals, Premium included. TOFC is about independence: if you want to copy trades, this isn't the community for you. We teach you everything you need to trade today's market with orderflow and price action, so you can trade the TOFC models yourself.",
       "coversHandoff": [],
       "phrases": [
+        { "text": "give signals", "weight": 6 },
+        { "text": "do you give signals", "weight": 7 },
+        { "text": "do you guys give signals", "weight": 8 },
+        { "text": "trade signals", "weight": 6 },
+        { "text": "signal group", "weight": 6 },
         { "text": "callouts", "weight": 6 },
         { "text": "call outs", "weight": 6 },
         { "text": "copy trade", "weight": 5 },
