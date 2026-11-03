@@ -696,6 +696,14 @@ test('rapid member messages debounce into one combined reply', () => {
   });
 });
 
+test('charting answers recommend only DeepCharts', () => {
+  const banned = /motivewave|atas|sierra|quantower|bookmap/i;
+  for (const entry of faq.entries) {
+    assert.equal(banned.test(entry.answer), false, entry.id);
+  }
+  assert.equal(matchQuestion('is motivewave good?', faq).entry.id, 'orderflow-platform');
+});
+
 test('knowledge-base entries match a realistic member question', () => {
   const cases = [
     ['do you trade from the vah or the poc', 'value-area-levels'],
@@ -714,6 +722,9 @@ test('knowledge-base entries match a realistic member question', () => {
     ['where do I find the deepcharts settings', 'deepcharts-settings-templates'],
     ['is there a deepcharts discount code', 'deepcharts-code'],
     ['can I copy your trades', 'copy-trading-signals'],
+    ['do you guys give signals', 'copy-trading-signals'],
+    ['which propfirm do you guys use', 'prop-firms'],
+    ['when is community call', 'community-calls-schedule'],
     ['how long does it take to learn orderflow', 'time-to-learn-orderflow'],
   ];
   for (const [question, id] of cases) {
