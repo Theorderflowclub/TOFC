@@ -11,6 +11,7 @@
 - [Features Overview](#features-overview)
 - [Quick Setup](#quick-setup)
 - [Manual Installation Steps](#manual-installation-steps)
+- [Publish posts from an external job](#publish-posts-from-an-external-job)
 - [Support Server](https://discord.gg/QnWNz2dKCE)
 - [Required Bot Intents](#bot-intents)
 - [Contributing](CONTRIBUTING.md)
@@ -258,6 +259,119 @@ Administrators and members with the **FOUNDERS TOFC** role can run `/export-qa` 
 The bot also saves new pairs from those channels and from ticket channels as messages arrive. Every Sunday at 20:00 Europe/Amsterdam it posts that week's pairs in `#ticket-transcripts`. Nothing is sent to members, and ticket replies are unchanged.
 
 Slash commands, including `/export-qa`, are registered when the bot starts. After this is deployed, restart the bot (Railway does that on deploy). If `GUILD_ID` is set, the command shows up in that server right away. Without a guild id, Discord can take up to an hour to show a new global command.
+
+<a name="publish-posts-from-an-external-job"></a>
+
+## Publish posts from an external job
+
+`POST /internal/publish` lets a scheduled job post in the TOFC Discord **as the bot**. The caller never receives the Discord bot token. The token stays in the host environment. The caller authenticates with a separate bearer secret.
+
+The route is on the same HTTP server as `/health`. It does nothing until both variables below are set. Merging the code is safe before they exist: with `PUBLISH_SECRET` unset, every request is refused.
+
+After merging, set these on the Railway service and restart (a new deploy also restarts the process):
+
+```env
+PUBLISH_SECRET=<openssl rand -hex 32>
+PUBLISH_ALLOWED_CHANNELS=1564051322485870803,1566110195938107643,1129232583503384618
+```
+
+| Variable | Purpose |
+| --- | --- |
+| `PUBLISH_SECRET` | Bearer secret. Use a long random hex string with no spaces. If it is unset or blank, the route answers `503 publish_disabled` for every request. |
+| `PUBLISH_ALLOWED_CHANNELS` | Comma-separated channel snowflakes. Any other channel is rejected. If this is empty, every channel is rejected. |
+
+Suggested allowlist (not applied automatically):
+
+| Channel | ID |
+| --- | --- |
+| TOFC alerts | `1564051322485870803` |
+| Best weekly traders | `1566110195938107643` |
+| Announcements | `1129232583503384618` |
+
+Posts are only delivered in guild `1126304434901749761`. The bot needs **View Channel**, **Send Messages**, **Embed Links**, and **Attach Files** in each target channel. Pinging `@everyone` also needs **Mention Everyone**.
+
+Mentions are off unless the request opts in. `allowedMentions.parse` is `[]` by default, so `@everyone`, roles, and user mentions in the text do not notify anyone. Set `mentionEveryone` to `true` to allow `@everyone` and `@here`. The message text still has to contain `@everyone` or `@here` for Discord to deliver the ping. User and role mentions stay suppressed.
+
+### JSON (text and embeds, no files)
+
+```bash
+curl -sS -X POST "$BASE_URL/internal/publish" \
+  -H "Authorization: Bearer $PUBLISH_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channelId": "1566110195938107643",
+    "content": "Weekly trader spotlight",
+    "embeds": [{
+      "title": "Best weekly traders",
+      "description": "Results are in.",
+      "color": "#336699"
+    }]
+  }'
+```
+
+### Multipart (image plus an embed that uses it)
+
+`channelId` is required. `content`, `embeds`, and `mentionEveryone` are optional. Attach up to 10 images with the field name `file` (any file field name is accepted). `embeds` is a JSON array. An embed image can reference an upload with `attachment://filename`. The filename must match the uploaded file exactly.
+
+```bash
+curl -sS -X POST "$BASE_URL/internal/publish" \
+  -H "Authorization: Bearer $PUBLISH_SECRET" \
+  -F "channelId=1564051322485870803" \
+  -F "content=@everyone Sunday news is up." \
+  -F "mentionEveryone=true" \
+  -F 'embeds=[{"title":"Sunday news","description":"Levels for the week are in.","image":{"url":"attachment://levels.png"},"color":"#336699"}]' \
+  -F "file=@levels.png;type=image/png"
+```
+
+A successful response is `201` JSON. If the connection drops after Discord accepts the message, a retry can post a second copy. Wait for this response, or check the channel, before sending the same post again.
+
+```json
+{
+  "messageId": "123456789012345678",
+  "channelId": "1564051322485870803",
+  "url": "https://discord.com/channels/1126304434901749761/1564051322485870803/123456789012345678"
+}
+```
+
+Errors are JSON `{ "error", "message" }`. `429` responses include `Retry-After` (seconds).
+
+| HTTP | `error` | When |
+| --- | --- | --- |
+| 503 | `publish_disabled` | `PUBLISH_SECRET` is not set. |
+| 503 | `bot_not_ready` | The bot has not finished logging in. |
+| 503 | `guild_unavailable` | The bot cannot see the TOFC server. |
+| 401 | `unauthorized` | Bearer token is missing or wrong. |
+| 403 | `channel_not_allowed` | The channel is not in `PUBLISH_ALLOWED_CHANNELS`. |
+| 403 | `guild_not_allowed` | The channel is not in the TOFC server. |
+| 403 | `missing_permissions` | The bot cannot speak, attach files, embed links, or mention everyone. |
+| 404 | `channel_not_found` | The channel is not in the TOFC server. |
+| 400 | `invalid_channel` | `channelId` is missing or not a snowflake string. |
+| 400 | `invalid_json` / `invalid_multipart` | The body could not be read. |
+| 400 | `invalid_message` | Content is too long, or Discord rejected the payload (`50035`). |
+| 400 | `invalid_embed` | An embed is the wrong shape or over Discord's limits. |
+| 400 | `invalid_mention_everyone` | `mentionEveryone` is not `true` or `false`. |
+| 400 | `empty_message` | No content, embed, or image. |
+| 400 | `unsupported_file_type` | A file is not PNG, JPEG, GIF, or WebP. |
+| 400 | `file_type_mismatch` | The extension does not match the image bytes. |
+| 400 | `invalid_filename` / `duplicate_filename` | Filename missing, unsafe, or repeated. |
+| 400 | `missing_attachment` | `attachment://name` does not match an uploaded file. |
+| 400 | `duplicate_field` / `too_many_fields` | The same text field was repeated, or there are too many fields. |
+| 400 | `too_many_files` | More than 10 images. |
+| 400 | `channel_not_text` | That channel cannot receive messages. |
+| 413 | `payload_too_large` | JSON, one image, or the combined upload is too large. |
+| 415 | `unsupported_media_type` | Content-Type is not JSON or multipart. |
+| 429 | `rate_limited` | More than 10 authorized requests per minute from one IP (invalid payloads count), 30 per minute overall, or 20 bad tokens per minute from one IP. |
+| 429 | `discord_rate_limited` | Discord rate limited the bot. |
+| 502 | `channel_lookup_failed` / `discord_send_failed` | Discord could not be reached or rejected the send. |
+| 500 | `internal_error` | Unexpected failure before Discord accepted the message. |
+
+The existing app-wide limiter can also return `429` with `{ "error": "Too many requests" }` (100 requests per 15 minutes per connecting IP). That shape is older and is not specific to publish.
+
+Limits, matching Discord's create-message caps: content 2000 characters, 10 embeds and 6000 embed characters combined, 10 images, 20 MiB per image, 25 MiB combined. JSON bodies are limited to 128 KiB. Only PNG, JPEG, GIF, and WebP are accepted, checked from the file bytes. `https` image URLs inside an embed are rendered by Discord. This endpoint does not download them. Upload the bytes and use `attachment://filename` when the bot should host the image.
+
+Each accepted publish and each rejection is logged without the bearer secret, the Discord token, or the message text. Successful lines look like `Publish posted messageId=... channelId=...`. They are written at warn level so they still show when `LOG_LEVEL=warn`.
+
+`/say`, tickets, FAQ replies, `/export-qa`, health checks, and the scheduled jobs are unchanged. `/say` remains a human slash command for plain text.
 
 <a name="bot-intents"></a>
 
