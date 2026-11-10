@@ -137,23 +137,34 @@ function createHarness({ roles, members = [], history = [], permissions = null }
 const RANK_ROLES = [role(PRESTIGE_4, 'Prestige 4'), role(PRESTIGE_5, 'Prestige 5')];
 
 test('prestige rank names match that rank and skip nearby ranks', () => {
-  for (const name of ['Prestige 4', 'prestige-4', 'Prestige-4', '🏆 Prestige 4']) {
+  for (const name of ['Prestige 4', 'prestige-4', 'Prestige-4', '🏆 Prestige 4', 'PRESTIGE FOUR', 'prestige four']) {
     assert.equal(isPrestigeRankName(name, 4), true, name);
     assert.equal(isPrestigeRankName(name, 5), false, name);
   }
-  for (const name of ['Prestige 5', 'prestige-5', 'Prestige-5', 'Prestige 5 | Champion']) {
+  for (const name of ['Prestige 5', 'prestige-5', 'Prestige-5', 'Prestige 5 | Champion', 'PRESTIGE FIVE']) {
     assert.equal(isPrestigeRankName(name, 5), true, name);
     assert.equal(isPrestigeRankName(name, 4), false, name);
   }
-  for (const name of ['Prestige 1', 'Prestige 14', 'Prestige 40', 'Prestige 15', 'Prestige 50', 'Premium']) {
+  for (const name of [
+    'Prestige 1', 'PRESTIGE ONE', 'PRESTIGE TWO', 'PRESTIGE THREE',
+    'Prestige 14', 'PRESTIGE FOURTEEN', 'Prestige 40', 'PRESTIGE FORTY',
+    'Prestige 15', 'PRESTIGE FIFTEEN', 'Prestige 50', 'Premium',
+  ]) {
     assert.equal(isPrestigeRankName(name, 4), false, name);
     assert.equal(isPrestigeRankName(name, 5), false, name);
   }
 
-  const roles = [...RANK_ROLES, role(OTHER_ROLE, 'Prestige 40')];
+  const roles = [
+    role('200000000000000001', 'PRESTIGE ONE'),
+    role('200000000000000002', 'PRESTIGE TWO'),
+    role('200000000000000003', 'PRESTIGE THREE'),
+    role(PRESTIGE_4, 'PRESTIGE FOUR'),
+    role(PRESTIGE_5, 'PRESTIGE FIVE'),
+    role(OTHER_ROLE, 'PRESTIGE FOURTEEN'),
+  ];
   assert.equal(resolvePrestigeRankRole(roles, 4, null).role.id, PRESTIGE_4);
   assert.equal(resolvePrestigeRankRole(roles, 5, null).role.id, PRESTIGE_5);
-  assert.equal(resolvePrestigeRankRole(roles, 4, OTHER_ROLE).role.name, 'Prestige 40');
+  assert.equal(resolvePrestigeRankRole(roles, 4, OTHER_ROLE).role.name, 'PRESTIGE FOURTEEN');
   assert.equal(resolvePrestigeRankRole([role(PRESTIGE_4, 'Prestige 4'), role(OTHER_ROLE, 'prestige-4')], 4, null).role, null);
 });
 

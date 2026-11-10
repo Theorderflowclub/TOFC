@@ -63,11 +63,28 @@ function enqueue(guildId, task) {
   return run;
 }
 
+const RANK_WORDS = [
+  ['one', '1'],
+  ['two', '2'],
+  ['three', '3'],
+  ['four', '4'],
+  ['five', '5'],
+  ['six', '6'],
+  ['seven', '7'],
+  ['eight', '8'],
+  ['nine', '9'],
+];
+
 function roleNameKey(name) {
-  return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  let text = String(name ?? '').toLowerCase();
+  for (const [word, digit] of RANK_WORDS) {
+    text = text.replace(new RegExp(`\\b${word}\\b`, 'g'), digit);
+  }
+  return text.replace(/[^a-z0-9]+/g, '');
 }
 
-// "Prestige 4" and "prestige-4" match. "Prestige 40" and "Prestige 14" do not.
+// "Prestige 4", "prestige-4", and "PRESTIGE FOUR" match.
+// "Prestige 40" and "PRESTIGE FOURTEEN" do not.
 export function isPrestigeRankName(name, rank) {
   return new RegExp(`^prestige${rank}(?!\\d)`).test(roleNameKey(name));
 }
