@@ -7,6 +7,7 @@ import { reconcileLevelRoles } from "../services/leveling/levelRoleSyncService.j
 import { initRiffyAfterReady } from "../services/music/riffySetup.js";
 import { auditTicketAccess } from "../services/ticketAutoReply/service.js";
 import { rebuildQaBuffer } from "../services/qaExport/weekly.js";
+import { syncLegendsLog } from "../services/legendsLogService.js";
 
 export default {
   name: Events.ClientReady,
@@ -51,6 +52,7 @@ export default {
 
       await auditTicketAccess(client);
       rebuildQaBuffer(client).catch((error) => logger.error("Q&A buffer rebuild failed:", error));
+      await syncLegendsLog(client);
     } catch (error) {
       logger.error("Error in ready event:", error);
     }
