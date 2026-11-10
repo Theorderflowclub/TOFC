@@ -1,5 +1,6 @@
 import { Events } from 'discord.js';
 import { logEvent, EVENT_TYPES } from '../services/loggingService.js';
+import { handleLegendsMemberUpdate } from '../services/legendsLogService.js';
 import { logger } from '../utils/logger.js';
 
 export default {
@@ -9,6 +10,9 @@ export default {
   async execute(oldMember, newMember) {
     try {
       if (!newMember.guild) return;
+
+      // Real-time Hall of Fame updates. Role adds post immediately; removals edit the showcase.
+      await handleLegendsMemberUpdate(oldMember, newMember);
 
       if (oldMember.nickname !== newMember.nickname) {
         await logEvent({
