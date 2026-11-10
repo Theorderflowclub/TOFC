@@ -11,6 +11,7 @@ export default {
     try {
       if (!newMember.guild) return;
 
+      // Real-time Hall of Fame updates. Role adds post immediately; removals edit the showcase.
       await handleLegendsMemberUpdate(oldMember, newMember);
 
       if (oldMember.nickname !== newMember.nickname) {

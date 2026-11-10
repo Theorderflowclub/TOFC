@@ -373,6 +373,67 @@ describe('legends log', { concurrency: false }, () => {
     assert.equal(harness.sent[0].embeds[0].toJSON().description, hallText({ legends: [ADA] }));
   });
 
+  test('a role gain before ready still posts the promotion and edits the showcase', async () => {
+    resetLegendsLogState();
+    const ada = member(ADA, 'ada', [PRESTIGE_4]);
+    const before = member(ADA, 'ada', []);
+    const harness = createHarness({ roles: RANK_ROLES, members: [ada] });
+    ada.guild = harness.guild;
+    ada.client = harness.client;
+    before.guild = harness.guild;
+
+    await handleLegendsMemberUpdate(before, ada, OPTIONS);
+    await handleLegendsMemberUpdate(before, ada, OPTIONS);
+
+    const promotions = harness.sent.filter((payload) => payload.content);
+    assert.equal(promotions.length, 1);
+    assert.equal(promotions[0].content, `🔥 <@${ADA}> ${PRESTIGE_4_PROMOTION}`);
+    const descriptions = [
+      ...harness.sent.map((payload) => payload.embeds?.[0]?.toJSON?.().description),
+      ...harness.edits.map((payload) => payload.embeds?.[0]?.toJSON?.().description),
+    ].filter(Boolean);
+    assert.equal(descriptions.some((description) => description === hallText({ legends: [ADA] })), true);
+  });
+
+  test('gaining both ranks in one event posts both messages and lists the champion once', async () => {
+    resetLegendsLogState();
+    const ada = member(ADA, 'ada', []);
+    const harness = createHarness({ roles: RANK_ROLES, members: [ada] });
+    ada.guild = harness.guild;
+    ada.client = harness.client;
+    await syncLegendsLog(harness.client, OPTIONS);
+
+    ada.roles.cache.set(PRESTIGE_4, { id: PRESTIGE_4 });
+    ada.roles.cache.set(PRESTIGE_5, { id: PRESTIGE_5 });
+    const before = member(ADA, 'ada', [], { guild: harness.guild, client: harness.client });
+    await handleLegendsMemberUpdate(before, ada, OPTIONS);
+
+    const promotions = harness.sent.filter((payload) => payload.content);
+    assert.deepEqual(promotions.map((payload) => payload.content), [
+      `🔥 <@${ADA}> ${PRESTIGE_4_PROMOTION}`,
+      `🏆 <@${ADA}> ${PRESTIGE_5_PROMOTION}`,
+    ]);
+    assert.equal(harness.edits.at(-1).embeds[0].toJSON().description, hallText({ champions: [ADA] }));
+  });
+
+  test('removing prestige 5 edits the showcase and does not post', async () => {
+    resetLegendsLogState();
+    const ada = member(ADA, 'ada', [PRESTIGE_4, PRESTIGE_5]);
+    const harness = createHarness({ roles: RANK_ROLES, members: [ada] });
+    ada.guild = harness.guild;
+    ada.client = harness.client;
+    await syncLegendsLog(harness.client, OPTIONS);
+
+    const before = member(ADA, 'ada', [PRESTIGE_4, PRESTIGE_5], { guild: harness.guild, client: harness.client });
+    ada.roles.cache.delete(PRESTIGE_5);
+    const sentBefore = harness.sent.length;
+    await handleLegendsMemberUpdate(before, ada, OPTIONS);
+
+    assert.equal(harness.sent.length, sentBefore);
+    assert.equal(harness.edits.at(-1).embeds[0].toJSON().description, hallText({ legends: [ADA] }));
+    assert.equal(harness.edits.at(-1).allowedMentions.parse.length, 0);
+  });
+
   test('an ambiguous prestige 5 role still lists prestige 4 legends', async () => {
     resetLegendsLogState();
     const harness = createHarness({

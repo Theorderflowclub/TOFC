@@ -437,6 +437,22 @@ function showcaseIds(hall) {
   };
 }
 
+function rankChange(oldMember, newMember, roleId) {
+  if (!roleId || !oldMember?.roles?.cache || !newMember?.roles?.cache) return 'unknown';
+  if (oldMember === newMember) return 'unknown';
+  const had = oldMember.roles.cache.has(roleId);
+  const has = newMember.roles.cache.has(roleId);
+  if (has && !had) return 'gained';
+  if (!has && had) return 'lost';
+  return 'unchanged';
+}
+
+function withoutDeferred(ids, deferred) {
+  if (!deferred?.length) return ids;
+  const skip = new Set(deferred);
+  return ids.filter((id) => !skip.has(id));
+}
+
 async function runSync(client, guildId, channelId, options) {
   const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
   if (!guild) {
@@ -476,8 +492,10 @@ async function runSync(client, guildId, channelId, options) {
 
   if (!state.bootstrapped) {
     await publishShowcase(channel, botId, state, championIds, legendIds);
-    state.announcedPrestige4 = hall.prestige4Holders;
-    state.announcedPrestige5 = ranks.prestige5.role ? hall.prestige5Holders : [];
+    state.announcedPrestige4 = withoutDeferred(hall.prestige4Holders, options.deferPrestige4);
+    state.announcedPrestige5 = ranks.prestige5.role
+      ? withoutDeferred(hall.prestige5Holders, options.deferPrestige5)
+      : [];
     state.bootstrapped = true;
     await saveState(client, guildId, state);
     logger.info(
@@ -494,10 +512,20 @@ async function runSync(client, guildId, channelId, options) {
   await saveState(client, guildId, state);
 }
 
-async function runMemberUpdate(newMember, guildId, channelId, options) {
+async function runMemberUpdate(oldMember, newMember, guildId, channelId, options) {
   if (newMember?.guild?.id !== guildId || newMember.user?.bot) return;
-  const state = await loadState(newMember.client, guildId);
-  if (!state.bootstrapped) return;
+  let state = await loadState(newMember.client, guildId);
+  if (!state.bootstrapped) {
+    const ranksForDefer = await resolveRanks(newMember.guild, options, { quiet: true });
+    const userId = newMember.user.id;
+    await runSync(newMember.client, guildId, channelId, {
+      ...options,
+      deferPrestige4: rankChange(oldMember, newMember, ranksForDefer.prestige4.role?.id) === 'gained' ? [userId] : [],
+      deferPrestige5: rankChange(oldMember, newMember, ranksForDefer.prestige5.role?.id) === 'gained' ? [userId] : [],
+    });
+    state = await loadState(newMember.client, guildId);
+    if (!state.bootstrapped) return;
+  }
 
   const ranks = await resolveRanks(newMember.guild, options, { quiet: true });
   if (!ranks.prestige4.role) return;
@@ -573,10 +601,10 @@ export function syncLegendsLog(client, options = {}) {
     .catch((error) => logger.error('Legends showcase sync failed:', error));
 }
 
-export function handleLegendsMemberUpdate(_oldMember, newMember, options = {}) {
+export function handleLegendsMemberUpdate(oldMember, newMember, options = {}) {
   const guildId = options.guildId || legendsGuildId();
   if (newMember?.guild?.id !== guildId) return Promise.resolve();
   const channelId = options.channelId || legendsChannelId();
-  return enqueue(guildId, () => runMemberUpdate(newMember, guildId, channelId, options))
+  return enqueue(guildId, () => runMemberUpdate(oldMember, newMember, guildId, channelId, options))
     .catch((error) => logger.error('Legends promotion log failed:', error));
 }
