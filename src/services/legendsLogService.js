@@ -283,18 +283,19 @@ async function saveState(client, guildId, state) {
   }
 }
 
-function isShowcaseMessage(message, botId) {
-  if (!message || message.author?.id !== botId) return false;
-  return [...(message.embeds || [])].some((embed) => embedTitle(embed) === SHOWCASE_TITLE);
+function isHallOfFameEmbed(embed) {
+  const data = embedData(embed);
+  const title = data.title || '';
+  const description = data.description || '';
+  const footer = data.footer?.text || '';
+  if (title === SHOWCASE_TITLE || title.includes('Hall of Fame')) return true;
+  if (footer.startsWith('Total Legends:')) return true;
+  return description.includes(PRESTIGE_4_HEADING) || description.includes(PRESTIGE_5_HEADING);
 }
 
-async function fetchMessage(channel, messageId) {
-  try {
-    return await channel.messages.fetch(messageId);
-  } catch (error) {
-    if (error?.code === 10008) return null;
-    throw error;
-  }
+function isShowcaseMessage(message, botId) {
+  if (!message || message.author?.id !== botId) return false;
+  return [...(message.embeds || [])].some((embed) => isHallOfFameEmbed(embed));
 }
 
 function oldestMessageId(messages) {
@@ -306,27 +307,32 @@ function oldestMessageId(messages) {
   return oldest;
 }
 
-async function findShowcaseInHistory(channel, botId) {
+async function listShowcaseMessages(channel, botId) {
+  const found = [];
+  const seen = new Set();
   let before;
   for (let page = 0; page < 5; page += 1) {
     const fetched = await channel.messages.fetch(before ? { limit: 100, before } : { limit: 100 });
     const batch = [...fetched.values()];
     for (const message of batch) {
-      if (isShowcaseMessage(message, botId)) return message;
+      if (!message?.id || seen.has(message.id) || !isShowcaseMessage(message, botId)) continue;
+      seen.add(message.id);
+      found.push(message);
     }
     const oldest = oldestMessageId(batch);
-    if (!oldest || oldest === before || batch.length < 100) return null;
+    if (!oldest || oldest === before || batch.length < 100) break;
     before = oldest;
   }
-  return null;
-}
-
-async function resolveShowcaseMessage(channel, botId, messageId) {
-  if (messageId) {
-    const message = await fetchMessage(channel, messageId);
-    if (isShowcaseMessage(message, botId)) return message;
-  }
-  return findShowcaseInHistory(channel, botId);
+  found.sort((a, b) => {
+    const aNumeric = /^\d+$/.test(a.id);
+    const bNumeric = /^\d+$/.test(b.id);
+    if (!aNumeric || !bNumeric) return 0;
+    const diff = BigInt(a.id) - BigInt(b.id);
+    if (diff < 0n) return -1;
+    if (diff > 0n) return 1;
+    return 0;
+  });
+  return found;
 }
 
 function missingPermissions(channel, guild) {
@@ -392,26 +398,32 @@ function avatarUrlOf(user) {
 
 async function publishShowcase(channel, botId, state, championIds, legendIds) {
   const payload = buildShowcaseMessage({ championIds, legendIds });
-  const existing = await resolveShowcaseMessage(channel, botId, state.showcaseMessageId);
-  if (existing && !showcaseNeedsUpdate(existing.embeds, payload.embeds)) {
-    state.showcaseMessageId = existing.id;
-    return existing;
+  const found = await listShowcaseMessages(channel, botId);
+  const keeper = found[0] || null;
+
+  for (const extra of found.slice(1)) {
+    try {
+      await extra.delete();
+      logger.info(`Removed duplicate Hall of Fame message ${extra.id}.`);
+    } catch (error) {
+      logger.warn(`Could not remove duplicate Hall of Fame message ${extra.id}: ${error.message}`);
+    }
   }
-  if (existing) {
-    const edited = await existing.edit(payload);
-    state.showcaseMessageId = edited?.id || existing.id;
-    return edited || existing;
+
+  if (keeper) {
+    state.showcaseMessageId = keeper.id;
+    if (showcaseNeedsUpdate(keeper.embeds, payload.embeds)) {
+      const edited = await keeper.edit(payload);
+      state.showcaseMessageId = edited?.id || keeper.id;
+    }
+    logger.info(`Hall of Fame kept message ${state.showcaseMessageId} and removed ${Math.max(found.length - 1, 0)} duplicate(s).`);
+    return keeper;
   }
+
   const sent = await channel.send(payload);
   state.showcaseMessageId = sent.id;
+  logger.info(`Hall of Fame posted message ${sent.id}.`);
   return sent;
-}
-
-async function memberById(guild, id) {
-  const cached = guild.members.cache.get(id);
-  if (cached?.user) return cached;
-  const fetched = await guild.members.fetch(id).catch(() => null);
-  return fetched?.user ? fetched : null;
 }
 
 async function announceRank(channel, member, rank) {
@@ -420,31 +432,6 @@ async function announceRank(channel, member, rank) {
     userId: member.user.id,
     avatarUrl: avatarUrlOf(member.user),
   }));
-}
-
-async function syncRank(client, guild, channel, guildId, state, rank, currentIds) {
-  const key = rank === 5 ? 'announcedPrestige5' : 'announcedPrestige4';
-  const known = new Set(state[key]);
-  for (const id of currentIds.filter((entry) => !known.has(entry))) {
-    const member = await memberById(guild, id);
-    if (!member || member.user.bot) continue;
-    state[key].push(id);
-    await saveState(client, guildId, state);
-    try {
-      await announceRank(channel, member, rank);
-    } catch (error) {
-      state[key] = state[key].filter((entry) => entry !== id);
-      await saveState(client, guildId, state);
-      throw error;
-    }
-    logger.info(`Logged Prestige ${rank} for ${member.user.tag || id}.`);
-  }
-
-  const still = new Set(currentIds);
-  if (state[key].some((id) => !still.has(id))) {
-    state[key] = state[key].filter((id) => still.has(id));
-    await saveState(client, guildId, state);
-  }
 }
 
 function showcaseIds(hall) {
@@ -507,26 +494,16 @@ async function runSync(client, guildId, channelId, options) {
   const state = await loadState(client, guildId);
   const botId = client.user.id;
 
-  if (!state.bootstrapped) {
-    await publishShowcase(channel, botId, state, championIds, legendIds);
-    state.announcedPrestige4 = withoutDeferred(hall.prestige4Holders, options.deferPrestige4);
-    state.announcedPrestige5 = ranks.prestige5.role
-      ? withoutDeferred(hall.prestige5Holders, options.deferPrestige5)
-      : [];
-    state.bootstrapped = true;
-    await saveState(client, guildId, state);
-    logger.info(
-      `Legends showcase ready. Prestige 4 "${ranks.prestige4.role.name}" [${ranks.prestige4.role.id}] (${hall.prestige4Holders.length}). Prestige 5 ${ranks.prestige5.role ? `"${ranks.prestige5.role.name}" [${ranks.prestige5.role.id}] (${hall.prestige5Holders.length})` : 'not found'}.`,
-    );
-    return;
-  }
-
-  await syncRank(client, guild, channel, guildId, state, 4, hall.prestige4Holders);
-  if (ranks.prestige5.role) {
-    await syncRank(client, guild, channel, guildId, state, 5, hall.prestige5Holders);
-  }
   await publishShowcase(channel, botId, state, championIds, legendIds);
+  state.announcedPrestige4 = withoutDeferred(hall.prestige4Holders, options.deferPrestige4);
+  state.announcedPrestige5 = ranks.prestige5.role
+    ? withoutDeferred(hall.prestige5Holders, options.deferPrestige5)
+    : [];
+  state.bootstrapped = true;
   await saveState(client, guildId, state);
+  logger.info(
+    `Legends roster saved. Prestige 4 "${ranks.prestige4.role.name}" [${ranks.prestige4.role.id}] (${hall.prestige4Holders.length}). Prestige 5 ${ranks.prestige5.role ? `"${ranks.prestige5.role.name}" [${ranks.prestige5.role.id}] (${hall.prestige5Holders.length})` : 'not found'}.`,
+  );
 }
 
 async function runMemberUpdate(oldMember, newMember, guildId, channelId, options) {

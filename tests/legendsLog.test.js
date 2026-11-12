@@ -99,6 +99,9 @@ function createHarness({ roles, members = [], history = [], permissions = null }
           message.embeds = (next.embeds || []).map((embed) => embed.toJSON());
           return message;
         },
+        delete: async () => {
+          messages.delete(message.id);
+        },
       };
       messages.set(message.id, message);
       sent.push(payload);
@@ -249,10 +252,70 @@ describe('legends log', { concurrency: false }, () => {
     harness.guild.members.cache.set(cal.id, cal);
     resetLegendsLogState();
     await syncLegendsLog(harness.client, OPTIONS);
-    const promotions = harness.sent.filter((payload) => payload.content);
-    assert.equal(promotions.length, 1);
-    assert.equal(promotions[0].content, `🔥 <@${cal.id}> ${PRESTIGE_4_PROMOTION}`);
-    assert.deepEqual(promotions[0].allowedMentions, { parse: [], users: [cal.id] });
+    assert.equal(harness.sent.filter((payload) => payload.content).length, 0);
+    assert.equal(harness.edits.at(-1).embeds[0].toJSON().description, hallText({ champions: [ADA], legends: [BEA, cal.id] }));
+    assert.deepEqual(harness.edits.at(-1).allowedMentions, { parse: [] });
+  });
+
+  test('startup deletes extra bot hall of fame copies and does not ping', async () => {
+    resetLegendsLogState();
+    const deleted = [];
+    const harness = createHarness({
+      roles: RANK_ROLES,
+      members: [member(BEA, 'bea', [PRESTIGE_4])],
+    });
+    const promo = {
+      id: '1569664297997430001',
+      author: { id: BOT },
+      content: `🔥 <@${BEA}> ${PRESTIGE_4_PROMOTION}`,
+      embeds: [{ description: 'Promoted Nov 10, 2026' }],
+      delete: async () => {
+        throw new Error('promotion deleted');
+      },
+    };
+    const human = {
+      id: '1569664297997430002',
+      author: { id: BEA },
+      embeds: [{ title: SHOWCASE_TITLE, description: 'member copy', footer: { text: 'Total Legends: 9' } }],
+      delete: async () => {
+        throw new Error('member message deleted');
+      },
+    };
+    const older = {
+      id: '1569664297997430010',
+      author: { id: BOT },
+      embeds: [{ title: SHOWCASE_TITLE, description: 'older copy', footer: { text: 'Total Legends: 1' } }],
+      edit: async (next) => {
+        older.embeds = next.embeds.map((embed) => embed.toJSON());
+        return older;
+      },
+      delete: async () => {
+        deleted.push(older.id);
+        harness.messages.delete(older.id);
+      },
+    };
+    const newer = {
+      id: '1569664297997430099',
+      author: { id: BOT },
+      embeds: [{ title: '🏆 TOFC LEGENDS: Hall of Fame', description: PRESTIGE_4_HEADING, footer: { text: 'Total Legends: 1' } }],
+      edit: async () => {
+        throw new Error('newer copy edited');
+      },
+      delete: async () => {
+        deleted.push(newer.id);
+        harness.messages.delete(newer.id);
+      },
+    };
+    for (const message of [promo, human, older, newer]) harness.messages.set(message.id, message);
+
+    await syncLegendsLog(harness.client, OPTIONS);
+    assert.equal(harness.sent.length, 0);
+    assert.deepEqual(deleted, [newer.id]);
+    assert.equal(harness.messages.has(older.id), true);
+    assert.equal(harness.messages.has(promo.id), true);
+    assert.equal(harness.messages.has(human.id), true);
+    assert.equal(older.embeds[0].description, hallText({ legends: [BEA] }));
+    assert.equal(harness.messages.has(newer.id), false);
   });
 
   test('an existing bot showcase is edited in place', async () => {
