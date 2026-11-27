@@ -371,7 +371,30 @@ Limits, matching Discord's create-message caps: content 2000 characters, 10 embe
 
 Each accepted publish and each rejection is logged without the bearer secret, the Discord token, or the message text. Successful lines look like `Publish posted messageId=... channelId=...`. They are written at warn level so they still show when `LOG_LEVEL=warn`.
 
-`/say`, tickets, FAQ replies, `/export-qa`, health checks, and the scheduled jobs are unchanged. `/say` remains a human slash command for plain text.
+`/say`, tickets, FAQ replies, `/export-qa`, and health checks are unchanged. `/say` remains a human slash command for plain text. Birthday checks, giveaways, counter updates, and the weekly Q&A export are unchanged. The 9:00 and 11:00 America/New_York weekday session pings are the exception: they are skipped on NO-TRADE and CLOSED days, as described below.
+
+<a name="no-trade-days"></a>
+
+## Weekday session pings on NO-TRADE and CLOSED days
+
+The morning hype (`Match starting soon...`, 9:00 America/New_York, weekdays) and the daily check-in (`How did we do today?`, 11:00 America/New_York, weekdays) are not posted when that New York date is a no-trade day or the NYSE is closed. Skipping happens before either message is sent, so every channel those jobs post to stays quiet. `/testhype` and `/testcheckin` still send on demand.
+
+`data/no-trade-days.json` is the primary list. Each entry is `{ "date": "YYYY-MM-DD", "status": "NO-TRADE" or "CLOSED", "reason" }`. The date is a New York calendar date.
+
+Before sending, the bot also reads its own most recent messages in the TOFC alerts channel (`1564051322485870803`). If one from today has an embed title containing `NO-TRADE` or `CLOSED` for that date, the ping is skipped. If that read fails, the JSON list is used on its own. The calendar post can arrive after 9:00 New York time when US and EU daylight saving disagree, so those dates still need to be in the file. A normal calendar title does not cancel a date that is already in the file.
+
+A skipped ping is logged with the New York date and the reason, for example `Skipping scheduled morning hype on 2026-11-27 (NO-TRADE: Early close) source=list`.
+
+`POST /internal/no-trade-days` uses the same `Authorization: Bearer $PUBLISH_SECRET` check as `/internal/publish`. Until `PUBLISH_SECRET` is set, every request is refused with `503 no_trade_disabled`. A mark or unmark is kept in memory until the process restarts. A `CLOSED` date from the file cannot be changed here. The alerts-channel calendar can still skip a date after it is unmarked.
+
+```bash
+curl -sS -X POST "$BASE_URL/internal/no-trade-days" \
+  -H "Authorization: Bearer $PUBLISH_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"date":"2026-12-04","action":"mark","reason":"NFP"}'
+```
+
+`action` is `mark` or `unmark`. `reason` is optional on `mark` and is limited to 200 characters.
 
 <a name="bot-intents"></a>
 
