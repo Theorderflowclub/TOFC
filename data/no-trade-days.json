@@ -1,0 +1,222 @@
+[
+  {
+    "date": "2026-11-26",
+    "status": "CLOSED",
+    "reason": "Thanksgiving"
+  },
+  {
+    "date": "2026-11-27",
+    "status": "NO-TRADE",
+    "reason": "Early close"
+  },
+  {
+    "date": "2026-12-04",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2026-12-09",
+    "status": "NO-TRADE",
+    "reason": "FOMC"
+  },
+  {
+    "date": "2026-12-10",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2026-12-18",
+    "status": "NO-TRADE",
+    "reason": "Quarterly witching"
+  },
+  {
+    "date": "2026-12-24",
+    "status": "NO-TRADE",
+    "reason": "Early close"
+  },
+  {
+    "date": "2026-12-25",
+    "status": "CLOSED",
+    "reason": "Christmas"
+  },
+  {
+    "date": "2027-01-01",
+    "status": "CLOSED",
+    "reason": "New Year"
+  },
+  {
+    "date": "2027-01-08",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-01-13",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-01-15",
+    "status": "NO-TRADE",
+    "reason": "Monthly OpEx"
+  },
+  {
+    "date": "2027-01-18",
+    "status": "CLOSED",
+    "reason": "MLK"
+  },
+  {
+    "date": "2027-01-27",
+    "status": "NO-TRADE",
+    "reason": "FOMC"
+  },
+  {
+    "date": "2027-02-05",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-02-11",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-02-15",
+    "status": "CLOSED",
+    "reason": "Presidents Day"
+  },
+  {
+    "date": "2027-02-17",
+    "status": "NO-TRADE",
+    "reason": "VIX + FOMC minutes"
+  },
+  {
+    "date": "2027-02-19",
+    "status": "NO-TRADE",
+    "reason": "Monthly OpEx"
+  },
+  {
+    "date": "2027-03-05",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-03-10",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-03-17",
+    "status": "NO-TRADE",
+    "reason": "FOMC + VIX exp"
+  },
+  {
+    "date": "2027-03-19",
+    "status": "NO-TRADE",
+    "reason": "Quarterly witching"
+  },
+  {
+    "date": "2027-03-26",
+    "status": "CLOSED",
+    "reason": "Good Friday"
+  },
+  {
+    "date": "2027-04-02",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-04-13",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-04-16",
+    "status": "NO-TRADE",
+    "reason": "Monthly OpEx"
+  },
+  {
+    "date": "2027-04-28",
+    "status": "NO-TRADE",
+    "reason": "FOMC"
+  },
+  {
+    "date": "2027-05-07",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-05-12",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-05-21",
+    "status": "NO-TRADE",
+    "reason": "Monthly OpEx"
+  },
+  {
+    "date": "2027-05-31",
+    "status": "CLOSED",
+    "reason": "Memorial Day"
+  },
+  {
+    "date": "2027-06-04",
+    "status": "NO-TRADE",
+    "reason": "NFP"
+  },
+  {
+    "date": "2027-06-09",
+    "status": "NO-TRADE",
+    "reason": "FOMC"
+  },
+  {
+    "date": "2027-06-10",
+    "status": "NO-TRADE",
+    "reason": "CPI"
+  },
+  {
+    "date": "2027-06-17",
+    "status": "NO-TRADE",
+    "reason": "Quarterly witching"
+  },
+  {
+    "date": "2027-06-18",
+    "status": "CLOSED",
+    "reason": "Juneteenth observed"
+  },
+  {
+    "date": "2027-07-05",
+    "status": "CLOSED",
+    "reason": "Independence Day observed"
+  },
+  {
+    "date": "2027-09-06",
+    "status": "CLOSED",
+    "reason": "Labor Day"
+  },
+  {
+    "date": "2027-09-17",
+    "status": "NO-TRADE",
+    "reason": "Triple witching"
+  },
+  {
+    "date": "2027-11-25",
+    "status": "CLOSED",
+    "reason": "Thanksgiving"
+  },
+  {
+    "date": "2027-11-26",
+    "status": "NO-TRADE",
+    "reason": "Early close"
+  },
+  {
+    "date": "2027-12-17",
+    "status": "NO-TRADE",
+    "reason": "Triple witching"
+  },
+  {
+    "date": "2027-12-24",
+    "status": "CLOSED",
+    "reason": "Christmas observed"
+  }
+]

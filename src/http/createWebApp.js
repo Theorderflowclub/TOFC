@@ -2,6 +2,7 @@ import express from 'express';
 import pkg from '../../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_LABEL, EXPECTED_SCHEMA_VERSION } from '../config/database/schemaVersion.js';
 import { mountPublishRoute } from './publish.js';
+import { mountNoTradeDaysRoute } from './noTradeDays.js';
 
 export function createWebApp(client, options = {}) {
   const app = express();
@@ -102,5 +103,6 @@ export function createWebApp(client, options = {}) {
   });
 
   mountPublishRoute(app, client, options.publish);
+  mountNoTradeDaysRoute(app, options.noTradeDays);
   return app;
 }
